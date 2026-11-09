@@ -1,0 +1,9 @@
+[
+  {"country_code": "AE", "start": "2026-12-02", "end": "2026-12-03", "kind": "holiday", "note": "UAE National Day. Customs runs a skeleton staff; holds clear when offices reopen."},
+  {"country_code": "DE", "start": "2026-10-03", "end": "2026-10-03", "kind": "holiday", "note": "German Unity Day."},
+  {"country_code": "DE", "start": "2026-12-24", "end": "2026-12-26", "kind": "holiday", "note": "Christmas."},
+  {"country_code": "GB", "start": "2026-12-25", "end": "2026-12-28", "kind": "holiday", "note": "Christmas and Boxing Day."},
+  {"country_code": "PK", "start": "2026-12-25", "end": "2026-12-25", "kind": "holiday", "note": "Quaid-e-Azam Day."},
+  {"country_code": "CN", "start": "2026-10-01", "end": "2026-10-07", "kind": "delay_window", "note": "Golden Week. Customs open but backlogged; 2-4 day delays are normal."},
+  {"country_code": "CN", "start": "2027-02-05", "end": "2027-02-13", "kind": "delay_window", "note": "Lunar New Year. Expect 5-10 day delays."}
+]
