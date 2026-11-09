@@ -1,0 +1,7 @@
+- description: "SH-2002 [maersk] false positive - UAE National Day customs hold"
+  vars: { shipment_id: SH-2002, customs_country: AE }
+  assert:
+    - type: javascript
+      value: "output.triage.false_positive === true"
+    - type: javascript
+      value: "['no_action', 'notify_customer'].includes(output.triage.action)"

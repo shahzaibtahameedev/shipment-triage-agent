@@ -128,5 +128,71 @@
     },
     "past_customs_history": "Same shipper and consignee cleared UK customs without issues on 4 previous shipments in 2026.",
     "system_note": "Waiting for Felixstowe to reopen means arrival after 2026-11-23, a week past the cargo's shelf life (2026-11-16). Diverting to London Gateway delivers on 2026-11-11, inside the promised date."
+  },
+  "SH-2001": {
+    "shipment_id": "SH-2001",
+    "carrier": "dhl",
+    "mode": "air",
+    "origin": "Karachi, PK",
+    "destination": "Riyadh, SA",
+    "destination_country_code": "SA",
+    "customer": "Najd Pharmacy Group",
+    "cargo": "Insulin pens, 20 cartons, must stay between 2 and 8 C",
+    "promised_delivery": "2026-11-14",
+    "temperature_controlled": true,
+    "allowed_temperature_c": {"min": 2.0, "max": 8.0},
+    "exception_raised_at": "2026-11-12T12:00:00Z",
+    "scans": [
+      {"code": "PU", "location": "Karachi Airport, PK", "timestamp": "2026-11-12T01:00:00Z", "note": "Picked up, reefer unit sealed"},
+      {"code": "AR", "location": "Dubai Transit, AE", "timestamp": "2026-11-12T08:30:00Z", "note": "Transit hub arrival, awaiting connecting flight"},
+      {"code": "TE", "location": "Dubai Transit, AE", "timestamp": "2026-11-12T11:30:00Z", "note": "Temperature alert from reefer logger"}
+    ],
+    "temperature_readings_c": [
+      {"timestamp": "2026-11-12T04:00:00Z", "value": 5.0},
+      {"timestamp": "2026-11-12T09:00:00Z", "value": 9.8},
+      {"timestamp": "2026-11-12T10:00:00Z", "value": 11.3},
+      {"timestamp": "2026-11-12T11:00:00Z", "value": 10.6}
+    ],
+    "past_customs_history": "Regular customer, no prior issues."
+  },
+  "SH-2002": {
+    "shipment_id": "SH-2002",
+    "carrier": "maersk",
+    "mode": "ocean",
+    "origin": "Karachi, PK",
+    "destination": "Dubai (Jebel Ali), AE",
+    "destination_country_code": "AE",
+    "customer": "Gulf Home Furnishings LLC",
+    "cargo": "Furniture, 1 x 40ft container",
+    "promised_delivery": "2026-12-12",
+    "temperature_controlled": false,
+    "exception_raised_at": "2026-12-02T12:00:00Z",
+    "scans": [
+      {"code": "PU", "location": "Karachi Port, PK", "timestamp": "2026-11-24T10:00:00Z", "note": "Picked up from shipper"},
+      {"code": "AR", "location": "Jebel Ali Port, AE", "timestamp": "2026-12-01T20:15:00Z", "note": "Vessel arrived, discharged"},
+      {"code": "HE", "location": "Jebel Ali Customs, AE", "timestamp": "2026-12-02T07:40:00Z", "note": "Held at customs"}
+    ],
+    "past_customs_history": "Same shipper and consignee cleared Jebel Ali customs without issues on 5 previous shipments in 2026."
+  },
+  "SH-2003": {
+    "shipment_id": "SH-2003",
+    "carrier": "regional_ground",
+    "mode": "ground",
+    "origin": "Karachi, PK",
+    "destination": "Lahore, PK",
+    "destination_country_code": "PK",
+    "customer": "Ravi Textiles",
+    "cargo": "Fabric rolls, 2 pallets",
+    "promised_delivery": "2026-11-06",
+    "temperature_controlled": false,
+    "scan_sla_hours": 24,
+    "exception_raised_at": "2026-11-06T09:00:00Z",
+    "scans": [
+      {"code": "PU", "location": "Karachi Depot, PK", "timestamp": "2026-11-04T06:00:00Z", "note": "Picked up from shipper"},
+      {"code": "DL", "location": "Lahore, PK", "timestamp": "2026-11-05T14:00:00Z", "note": "Delivered - signed by 'A. Khan'"},
+      {"code": "AR", "location": "Multan Hub, PK", "timestamp": "2026-11-05T16:30:00Z", "note": "Arrived at transit hub"}
+    ],
+    "past_customs_history": "Domestic shipment, no customs.",
+    "system_note": "Customer reports the shipment has not been received and says no one named A. Khan works at the delivery address."
   }
 }

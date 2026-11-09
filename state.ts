@@ -1,5 +1,6 @@
 import { Annotation } from "@langchain/langgraph";
-import type { Carrier, HumanDecision, TriageAction, TriageResult } from "./constants.ts";
+import { CARRIERS, type Carrier, type HumanDecision, type TriageAction, type TriageResult } from "./constants.ts";
+import { getShipmentHistory } from "./custom-tool.ts";
 
 export interface ExceptionEvent {
   shipment_id?: string;
@@ -29,3 +30,28 @@ export const TriageState = Annotation.Root({
 });
 
 export type TriageStateType = typeof TriageState.State;
+
+export function buildEvent(shipmentId: string): ExceptionEvent {
+  const shipment = getShipmentHistory(shipmentId) as Record<string, unknown>;
+  if ("error" in shipment) {
+    throw new Error(`Shipment ${shipmentId} not found in fixtures/shipments.json`);
+  }
+
+  let { carrier, scans } = shipment as { carrier: string; scans: { code: string }[] } ||
+                          ({carrier: "", scans: {code: [""]}});
+
+  if (!isCarrier(carrier)) {
+    throw new Error(`Shipment ${shipmentId} has unknown carrier "${carrier}"`);
+  }
+
+  return {
+    shipment_id: shipmentId,
+    carrier: carrier ?? "",
+    event_code: scans.at(-1)?.code ?? "",
+    raw_payload: shipment,
+  };
+}
+
+function isCarrier(value: string): value is Carrier {
+  return (Object.values(CARRIERS) as string[]).includes(value);
+}

@@ -1,0 +1,12 @@
+description: "Shipment triage regression suite (Week 2 LangGraph graph)"
+prompts:
+  - "{{shipment_id}}"
+
+providers:
+  - id: file://provider.ts
+    label: triage-graph
+
+evaluateOptions:
+  maxConcurrency: 1
+
+tests: file://tests.yaml

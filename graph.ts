@@ -6,8 +6,8 @@ import { dhlAgent, maerskAgent, regionalAgent } from "./carriers.ts";
 import { humanApprovalNode } from "./approval.ts";
 import { createCheckpointer } from "./db.ts";
 
-export async function buildGraph() {
-  const workflow = new StateGraph(TriageState)
+export function buildWorkflow() {
+  return new StateGraph(TriageState)
     .addNode(NODES.ROUTE, routeNode)
     .addNode(NODES.DHL, dhlAgent)
     .addNode(NODES.MAERSK, maerskAgent)
@@ -19,10 +19,12 @@ export async function buildGraph() {
     .addEdge(NODES.MAERSK, NODES.HUMAN_APPROVAL)
     .addEdge(NODES.REGIONAL, NODES.HUMAN_APPROVAL)
     .addEdge(NODES.HUMAN_APPROVAL, END);
+}
 
+export async function buildGraph() {
   const checkpointer = createCheckpointer();
   await checkpointer.setup();
 
-  const graph = workflow.compile({ checkpointer });
+  const graph = buildWorkflow().compile({ checkpointer });
   return { graph, checkpointer };
 }

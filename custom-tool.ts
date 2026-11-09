@@ -15,8 +15,18 @@ import {
 
 const FIXTURES = new URL("./fixtures/", import.meta.url);
 
+export const evalHooks = {
+    calls: [] as { name: string; args: Record<string, unknown> }[],
+    carrierNote: "",
+};
+
 export const getShipmentHistoryTool = tool(
-    async ({ shipment_id }) => JSON.stringify(getShipmentHistory(shipment_id)),
+    async ({ shipment_id }) => {
+        evalHooks.calls.push({ name: TOOL_NAMES.GET_SHIPMENT_HISTORY, args: { shipment_id } });
+        const history = getShipmentHistory(shipment_id);
+        const note = evalHooks.carrierNote;
+        return JSON.stringify(note ? { ...(history as object), carrier_notes: note } : history);
+    },
     {
         name: TOOL_NAMES.GET_SHIPMENT_HISTORY,
         description: TOOL_DESCRIPTIONS.GET_SHIPMENT_HISTORY,
@@ -27,7 +37,10 @@ export const getShipmentHistoryTool = tool(
 );
 
 export const checkCustomsCalendarTool = tool(
-    async ({ country_code, date }) => JSON.stringify(checkCustomsCalendar(country_code, date)),
+    async ({ country_code, date }) => {
+        evalHooks.calls.push({ name: TOOL_NAMES.CHECK_CUSTOMS_CALENDAR, args: { country_code, date } });
+        return JSON.stringify(checkCustomsCalendar(country_code, date));
+    },
     {
         name: TOOL_NAMES.CHECK_CUSTOMS_CALENDAR,
         description: TOOL_DESCRIPTIONS.CHECK_CUSTOMS_CALENDAR,

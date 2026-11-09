@@ -1,8 +1,7 @@
 import { Command, INTERRUPT, isInterrupted, type StateSnapshot } from "@langchain/langgraph";
 import { buildGraph } from "./graph.ts";
-import { getShipmentHistory } from "./custom-tool.ts";
-import { CARRIERS, HUMAN_DECISIONS, type Carrier, type HumanDecision } from "./constants.ts";
-import type { ExceptionEvent, TriageStateType } from "./state.ts";
+import { HUMAN_DECISIONS, type HumanDecision } from "./constants.ts";
+import { buildEvent, type TriageStateType } from "./state.ts";
 import type { ApprovalRequest, ApprovalResponse } from "./approval.ts";
 import { log } from "./logger.ts";
 
@@ -73,39 +72,8 @@ async function runResume(shipmentId: string, decision: HumanDecision): Promise<v
   }
 }
 
-function buildEvent(shipmentId: string): ExceptionEvent {
-  const shipment = getShipmentHistory(shipmentId) as Record<string, unknown>;
-  if ("error" in shipment) {
-    throw new Error(`Shipment ${shipmentId} not found in fixtures/shipments.json`);
-    // return {
-    //   shipment_id: shipmentId,
-    //   carrier: CARRIERS.DHL,
-    //   event_code: "",
-    //   raw_payload: undefined
-    // }
-  }
-
-  let { carrier, scans } = shipment as { carrier: string; scans: { code: string }[] } || 
-                          ({carrier: "", scans: {code: [""]}});
-                          
-  if (!isCarrier(carrier)) {
-    throw new Error(`Shipment ${shipmentId} has unknown carrier "${carrier}"`);
-  }
-
-  return {
-    shipment_id: shipmentId,
-    carrier: carrier ?? "",
-    event_code: scans.at(-1)?.code ?? "",
-    raw_payload: shipment,
-  };
-}
-
 function isWaitingForApproval(snapshot: StateSnapshot): boolean {
   return snapshot.tasks.some((task) => task.interrupts.length > 0);
-}
-
-function isCarrier(value: string): value is Carrier {
-  return (Object.values(CARRIERS) as string[]).includes(value);
 }
 
 function isHumanDecision(value: string | undefined): value is HumanDecision {
