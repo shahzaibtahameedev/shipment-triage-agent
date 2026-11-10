@@ -5,14 +5,15 @@ import { routeNode, routeToCarrier } from "./route.ts";
 import { dhlAgent, maerskAgent, regionalAgent } from "./carriers.ts";
 import { humanApprovalNode } from "./approval.ts";
 import { createCheckpointer } from "./db.ts";
+import { traceAgent, traceNode } from "./tracing.ts";
 
 export function buildWorkflow() {
   return new StateGraph(TriageState)
-    .addNode(NODES.ROUTE, routeNode)
-    .addNode(NODES.DHL, dhlAgent)
-    .addNode(NODES.MAERSK, maerskAgent)
-    .addNode(NODES.REGIONAL, regionalAgent)
-    .addNode(NODES.HUMAN_APPROVAL, humanApprovalNode)
+    .addNode(NODES.ROUTE, traceAgent(NODES.ROUTE, routeNode))
+    .addNode(NODES.DHL, traceAgent(NODES.DHL, dhlAgent))
+    .addNode(NODES.MAERSK, traceAgent(NODES.MAERSK, maerskAgent))
+    .addNode(NODES.REGIONAL, traceAgent(NODES.REGIONAL, regionalAgent))
+    .addNode(NODES.HUMAN_APPROVAL, traceNode(NODES.HUMAN_APPROVAL, {}, humanApprovalNode))
     .addEdge(START, NODES.ROUTE)
     .addConditionalEdges(NODES.ROUTE, routeToCarrier, [NODES.DHL, NODES.MAERSK, NODES.REGIONAL])
     .addEdge(NODES.DHL, NODES.HUMAN_APPROVAL)

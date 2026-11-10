@@ -4,6 +4,8 @@ import { getShipmentHistoryTool, checkCustomsCalendarTool } from "./custom-tool.
 import { DHL_PROMPT, MAERSK_PROMPT, REGIONAL_PROMPT } from "./prompt.ts";
 import { CARRIERS, TRIAGE_RESULT_SCHEMA, type Carrier, type TriageResult } from "./constants.ts";
 import type { TriageStateType } from "./state.ts";
+import { trace } from "@opentelemetry/api";
+import { tracingMiddleware } from "./tracing.ts";
 
 // Max tool call a model is allowed
 const AGENT_CONFIG = { recursionLimit: 12 };
@@ -14,6 +16,7 @@ const dhlSpecialist = createAgent({
   systemPrompt: DHL_PROMPT,
   tools: [getShipmentHistoryTool, checkCustomsCalendarTool],
   responseFormat: TRIAGE_RESULT_SCHEMA,
+  middleware: [tracingMiddleware],
 });
 
 const maerskSpecialist = createAgent({
@@ -21,6 +24,7 @@ const maerskSpecialist = createAgent({
   systemPrompt: MAERSK_PROMPT,
   tools: [getShipmentHistoryTool, checkCustomsCalendarTool],
   responseFormat: TRIAGE_RESULT_SCHEMA,
+  middleware: [tracingMiddleware],
 });
 
 const regionalSpecialist = createAgent({
@@ -28,6 +32,7 @@ const regionalSpecialist = createAgent({
   systemPrompt: REGIONAL_PROMPT,
   tools: [getShipmentHistoryTool],
   responseFormat: TRIAGE_RESULT_SCHEMA,
+  middleware: [tracingMiddleware],
 });
 
 interface IAgentResponse {
@@ -73,6 +78,11 @@ Partial<TriageStateType> {
   logToolCalls(carrier, result.messages);
   const triage = result.structuredResponse;
   console.log(`[${carrier}] action = ${triage.action}, confidence = ${triage.confidence}`);
+  trace.getActiveSpan()?.setAttributes({
+    "triage.action": triage.action,
+    "triage.confidence": triage.confidence,
+    "triage.false_positive": triage.false_positive,
+  });
   
   return {
     triage_result: triage,
