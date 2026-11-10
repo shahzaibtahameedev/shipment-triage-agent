@@ -4,6 +4,8 @@ import { HUMAN_DECISIONS, type HumanDecision } from "./constants.ts";
 import { buildEvent, type TriageStateType } from "./state.ts";
 import type { ApprovalRequest, ApprovalResponse } from "./approval.ts";
 import { log } from "./logger.ts";
+import { trace } from "@opentelemetry/api";
+import { startTracing, stopTracing, traceRun } from "./tracing.ts";
 
 const USAGE = `Usage:
   npm run triage -- SH-1002
@@ -11,6 +13,7 @@ const USAGE = `Usage:
 
 async function runTriage(shipmentId: string): Promise<void> {
   const event = buildEvent(shipmentId);
+  trace.getActiveSpan()?.setAttribute("carrier", event.carrier ?? "");
   const config = { configurable: { thread_id: shipmentId } };
   const { graph, checkpointer } = await buildGraph();
 
@@ -43,7 +46,7 @@ async function runTriage(shipmentId: string): Promise<void> {
     log(`${shipmentId} Triage Completed`);
     log(`Final state: ${formatFinalState(result)}`)
   } finally {
-    await checkpointer.end(); // close the pg pool so the process exits
+    await checkpointer.end();
   }
 }
 
@@ -52,6 +55,7 @@ async function runResume(shipmentId: string, decision: HumanDecision): Promise<v
   const { graph, checkpointer } = await buildGraph();
   const graphState = await graph.getState(config);
   const isPendingApproval = isWaitingForApproval(graphState);
+  trace.getActiveSpan()?.setAttribute("carrier", graphState.values.event?.carrier ?? "");
 
   try {
     if (!isPendingApproval) {
@@ -101,11 +105,16 @@ function formatFinalState(state: TriageStateType): string {
 const [command, rawShipmentId, decision] = process.argv.slice(2);
 const shipmentId = rawShipmentId?.trim().toUpperCase();
 
-if (command === "triage" && shipmentId) {
-  await runTriage(shipmentId);
-} else if (command === "resume" && shipmentId && isHumanDecision(decision)) {
-  await runResume(shipmentId, decision);
-} else {
-  console.error(USAGE);
-  process.exitCode = 1;
+startTracing();
+try {
+  if (command === "triage" && shipmentId) {
+    await traceRun("triage", shipmentId, () => runTriage(shipmentId));
+  } else if (command === "resume" && shipmentId && isHumanDecision(decision)) {
+    await traceRun("resume", shipmentId, () => runResume(shipmentId, decision));
+  } else {
+    console.error(USAGE);
+    process.exitCode = 1;
+  }
+} finally {
+  await stopTracing();
 }
