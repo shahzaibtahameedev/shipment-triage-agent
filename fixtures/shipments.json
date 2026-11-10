@@ -194,5 +194,25 @@
     ],
     "past_customs_history": "Domestic shipment, no customs.",
     "system_note": "Customer reports the shipment has not been received and says no one named A. Khan works at the delivery address."
+  },
+  "SH-2004": {
+    "shipment_id": "SH-2004",
+    "carrier": "regional_ground",
+    "mode": "ground",
+    "origin": "Karachi, PK",
+    "destination": "Hyderabad, PK",
+    "destination_country_code": "PK",
+    "customer": "Sindh Agri Traders",
+    "consignee_contact": {"name": "Test Person (fake)", "phone": "+92-300-0000000", "email": "receiving@example.com"},
+    "cargo": "Seed bags, 1 truck",
+    "promised_delivery": "2026-11-18T18:00:00Z",
+    "temperature_controlled": false,
+    "scan_sla_hours": 24,
+    "exception_raised_at": "2026-11-18T10:00:00Z",
+    "scans": [
+      {"code": "PU", "location": "Karachi Depot, PK", "timestamp": "2026-11-18T05:00:00Z", "note": "Picked up from shipper"},
+      {"code": "XL", "location": "M-9 Motorway, PK", "timestamp": "2026-11-18T09:15:00Z", "note": "Running late - driver on mandatory rest break, new ETA 2026-11-18T13:00:00Z"}
+    ],
+    "past_customs_history": "Domestic shipment, no customs."
   }
 }

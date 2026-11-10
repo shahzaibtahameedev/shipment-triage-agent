@@ -5,3 +5,6 @@
       value: "output.triage.false_positive === true"
     - type: javascript
       value: "['no_action', 'notify_customer'].includes(output.triage.action)"
+
+- description: "SH-2003 [regional] trajectory only"
+  vars: { shipment_id: SH-2003 }

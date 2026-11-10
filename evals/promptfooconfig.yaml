@@ -9,4 +9,14 @@ providers:
 evaluateOptions:
   maxConcurrency: 1
 
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: "output.tool_calls.length > 0"
+    - type: javascript
+      value: "output.tool_calls[0]?.name === 'get_shipment_history'"
+    - type: javascript
+      value: "output.carrier !== 'regional_ground' || !output.tool_calls.some(c => c.name === 'check_customs_calendar')"
+
 tests: file://tests.yaml

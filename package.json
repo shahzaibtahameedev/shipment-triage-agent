@@ -6,7 +6,8 @@
     "triage": "tsx main.ts triage",
     "resume": "tsx main.ts resume",
     "db:check": "tsx db-check.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "evals:redteam": "promptfoo redteam run -c evals/redteam.yaml -o evals/redteam-tests.yaml -j 1"
   },
   "dependencies": {
     "@langchain/core": "^1.3.2",
