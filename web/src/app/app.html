@@ -1,0 +1,77 @@
+<a
+  href="#main"
+  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded focus:bg-surface focus:px-3 focus:py-2"
+>
+  Skip to content
+</a>
+
+<div class="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+  <div class="bg-navy-950 lg:border-r lg:border-white/5">
+  <header class="z-30 flex flex-col text-navy-200 lg:sticky lg:top-0 lg:h-dvh">
+    <a routerLink="/run" class="flex items-center gap-3 px-5 pt-5 pb-4 text-white lg:pt-7 lg:pb-6">
+      <svg viewBox="0 0 32 32" class="size-8 shrink-0" aria-hidden="true">
+        <path d="M2 16h28" stroke="var(--line-maersk)" stroke-width="4" />
+        <path d="M6 4l20 24" stroke="var(--line-dhl)" stroke-width="4" />
+        <path d="M6 28L26 4" stroke="var(--line-regional)" stroke-width="4" />
+        <circle cx="16" cy="16" r="7" fill="white" stroke="var(--navy-950)" stroke-width="3" />
+      </svg>
+      <span class="font-display text-[1.25rem] leading-none font-bold tracking-[0.06em] uppercase">
+        Shipment Triage
+      </span>
+    </a>
+
+    <nav aria-label="Main" class="overflow-x-auto px-3 pb-3 lg:flex-1 lg:overflow-visible lg:pb-0">
+      <ul class="flex gap-1 lg:flex-col">
+        <li>
+          <a routerLink="/run" routerLinkActive="nav-active" class="nav-link">
+            <svg lucidePlay [size]="18" aria-hidden="true"></svg>
+            Run Agent
+          </a>
+        </li>
+        <li>
+          <a routerLink="/shipments" routerLinkActive="nav-active" class="nav-link">
+            <svg lucidePackage [size]="18" aria-hidden="true"></svg>
+            Shipments
+          </a>
+        </li>
+        <li>
+          <a routerLink="/test-shipments" routerLinkActive="nav-active" class="nav-link">
+            <svg lucideFlaskConical [size]="18" aria-hidden="true"></svg>
+            Test Shipments
+          </a>
+        </li>
+        <li>
+          <a routerLink="/logs" routerLinkActive="nav-active" class="nav-link">
+            <svg lucideScrollText [size]="18" aria-hidden="true"></svg>
+            Logs
+          </a>
+        </li>
+        <li>
+          <a routerLink="/prompts" routerLinkActive="nav-active" class="nav-link">
+            <svg lucideMessageSquareText [size]="18" aria-hidden="true"></svg>
+            Prompts
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <section aria-label="Carrier lines" class="hidden px-5 pb-6 lg:block">
+      <h2 class="label-caps mb-3 text-navy-300">Lines</h2>
+      <ul class="flex flex-col gap-2.5">
+        @for (line of lines; track line.label) {
+          <li class="flex items-center gap-3 text-[0.875rem]">
+            <span class="h-1 w-6 rounded-full" [style.background]="line.color" aria-hidden="true"></span>
+            <span class="text-navy-200">{{ line.specialist }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  </header>
+  </div>
+
+  <main id="main" class="min-w-0">
+    <router-outlet />
+  </main>
+</div>
+
+<app-toast-host />

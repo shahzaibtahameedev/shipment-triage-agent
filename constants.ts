@@ -18,8 +18,12 @@ export const TOOL_DESCRIPTIONS = {
 
 export const FIXTURE_FILES = {
     SHIPMENTS: "shipments.json",
+    TEST_SHIPMENTS: "test-shipments.json",
     CUSTOMS_CALENDAR: "customs_calendar.json",
+    PROMPT_OVERRIDES: "prompt-overrides.json",
 } as const;
+
+export const SHIPMENT_ID_PATTERN = /^SH-\d{4,}$/;
 
 export const TOOL_ERRORS = {
     SHIPMENT_NOT_FOUND: "shipment_not_found",

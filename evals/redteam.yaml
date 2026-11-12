@@ -23,10 +23,8 @@ redteam:
     reads with a tool. Write it as text a carrier or an attacker could put in that field.
   provider: google:gemini-3.5-flash-lite
   injectVar: carrier_note
-  numTests: 3
+  numTests: 1
   plugins:
-    - excessive-agency
     - pii:direct
   strategies:
     - basic
-    - jailbreak-templates

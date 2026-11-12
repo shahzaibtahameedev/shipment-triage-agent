@@ -1,0 +1,132 @@
+<div class="px-5 pt-6 pb-10 lg:px-8 lg:pt-8">
+  <header class="mb-6">
+    <h1 class="page-title">Prompts</h1>
+    <p class="mt-1.5 max-w-[65ch] text-ink-2">
+      Everything the agent is told. Edits are saved to <code class="font-mono text-[0.8125rem]">fixtures/prompt-overrides.json</code>
+      and apply on the next run.
+    </p>
+  </header>
+
+  @if (prompts.error(); as error) {
+    <p class="panel px-5 py-6 text-scarlet-ink" role="alert">{{ errorMessage(error) }}</p>
+  } @else if (prompts.isLoading() && list().length === 0) {
+    <div class="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]" aria-hidden="true">
+      <div class="panel h-80 animate-pulse"></div>
+      <div class="panel h-[32rem] animate-pulse"></div>
+    </div>
+  } @else {
+    <div class="grid items-start gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <nav class="panel overflow-hidden lg:sticky lg:top-6" aria-label="Prompt list">
+        @for (section of sections(); track section.group) {
+          <div class="border-b border-rule last:border-b-0">
+            <h2 class="label-caps px-4 pt-3.5 pb-1.5 text-ink-3">{{ section.title }}</h2>
+            <ul class="pb-2">
+              @for (prompt of section.prompts; track prompt.key) {
+                <li>
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-4 py-2 text-left text-[0.9375rem] transition-colors hover:bg-surface-2"
+                    [class.bg-surface-2]="prompt.key === active()?.key"
+                    [class.font-semibold]="prompt.key === active()?.key"
+                    [attr.aria-current]="prompt.key === active()?.key ? 'true' : null"
+                    (click)="choose(prompt.key)"
+                  >
+                    <span class="min-w-0 flex-1 truncate">{{ prompt.label }}</span>
+                    @if (prompt.isModified) {
+                      <span class="label-caps rounded-full bg-amber-soft px-1.5 py-px text-[0.6875rem] text-amber-ink">Edited</span>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </nav>
+
+      @if (active(); as prompt) {
+        <section class="panel min-w-0" aria-labelledby="prompt-heading">
+          @if (pendingKey()) {
+            <div class="flex flex-wrap items-center gap-3 border-b border-rule bg-amber-soft px-5 py-3 text-amber-ink" role="alert">
+              <p class="flex-1">You have unsaved changes to {{ prompt.label }}. Discard them and open {{ pendingLabel() }}?</p>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="pendingKey.set(null)">Keep editing</button>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="discardAndSwitch()">Discard changes</button>
+            </div>
+          }
+
+          <header class="border-b border-rule px-5 py-4">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 id="prompt-heading" class="font-display text-[1.375rem] leading-tight font-bold tracking-[0.03em] uppercase">
+                {{ prompt.label }}
+              </h2>
+              <code class="rounded bg-surface-2 px-1.5 py-px font-mono text-[0.75rem] text-ink-2">{{ prompt.key }}</code>
+              @if (prompt.isModified) {
+                <span class="label-caps rounded-full bg-amber-soft px-2 py-0.5 text-amber-ink">Edited</span>
+              }
+            </div>
+            <p class="mt-1 text-ink-2">{{ prompt.description }}</p>
+            @if (prompt.placeholders.length > 0) {
+              <p class="mt-2 flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-ink-3">
+                Filled in at run time:
+                @for (name of prompt.placeholders; track name) {
+                  <code class="rounded bg-surface-2 px-1.5 py-px font-mono text-ink">{{ placeholderToken(name) }}</code>
+                }
+              </p>
+            }
+          </header>
+
+          <div class="px-5 py-4">
+            <label for="prompt-editor" class="sr-only">{{ prompt.label }} text</label>
+            <textarea
+              id="prompt-editor"
+              class="field code-field"
+              spellcheck="false"
+              [rows]="editorRows"
+              [value]="draft()"
+              (input)="draft.set($any($event.target).value)"
+            ></textarea>
+
+            @if (missingPlaceholders().length > 0) {
+              <p class="mt-2 flex items-start gap-2 text-[0.875rem] text-amber-ink" role="status">
+                <svg lucideTriangleExclamationPoint [size]="16" class="mt-0.5 shrink-0" aria-hidden="true"></svg>
+                <span>
+                  This prompt no longer contains
+                  @for (name of missingPlaceholders(); track name; let last = $last) {
+                    <code class="font-mono">{{ placeholderToken(name) }}</code>@if (!last) {, }
+                  }, so the agent won't receive that value.
+                </span>
+              </p>
+            }
+
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <span class="mr-auto text-[0.8125rem] text-ink-3 tabular">
+                {{ draft().length }} characters{{ isDirty() ? ' · unsaved changes' : '' }}
+              </span>
+              <button
+                type="button"
+                class="btn btn-ghost"
+                [disabled]="saving() || !prompt.isModified"
+                title="Go back to the prompt that ships with the code"
+                (click)="resetToDefault()"
+              >
+                <svg lucideRotateCcw aria-hidden="true"></svg>
+                Reset to default
+              </button>
+              <button type="button" class="btn btn-secondary" [disabled]="saving() || !isDirty()" (click)="revert()">
+                Undo changes
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                [disabled]="saving() || !isDirty() || draft().trim().length === 0"
+                (click)="save()"
+              >
+                <svg lucideSave aria-hidden="true"></svg>
+                {{ saving() ? 'Saving…' : 'Save prompt' }}
+              </button>
+            </div>
+          </div>
+        </section>
+      }
+    </div>
+  }
+</div>

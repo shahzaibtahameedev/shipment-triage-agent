@@ -1,0 +1,194 @@
+<section class="panel flex min-h-[28rem] flex-1 flex-col" aria-labelledby="result-heading">
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-rule px-5 py-3.5">
+    <h2 id="result-heading" class="font-display text-[1.125rem] font-bold tracking-[0.05em] uppercase">Result</h2>
+    @if (outcome(); as outcome) {
+      <app-status-badge [kind]="statusKind()" />
+      <app-carrier-line [carrier]="outcome.carrier" />
+      <span class="ml-auto text-[0.8125rem] text-ink-3 tabular">{{ durationSeconds() }} s</span>
+    } @else if (phase() === PHASES.RUNNING) {
+      <app-status-badge [kind]="KINDS.RUNNING" />
+    } @else if (phase() === PHASES.FAILED) {
+      <app-status-badge [kind]="KINDS.FAILED" />
+    }
+  </header>
+
+  <div class="flex flex-1 flex-col px-5 py-5">
+    @switch (phase()) {
+      @case (PHASES.RUNNING) {
+        <div class="flex flex-col gap-4" aria-hidden="true">
+          <div class="h-8 w-3/5 animate-pulse rounded bg-surface-2"></div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="h-12 animate-pulse rounded bg-surface-2"></div>
+            <div class="h-12 animate-pulse rounded bg-surface-2"></div>
+          </div>
+          <div class="h-3 w-full animate-pulse rounded bg-surface-2"></div>
+          <div class="h-3 w-11/12 animate-pulse rounded bg-surface-2"></div>
+          <div class="h-3 w-4/5 animate-pulse rounded bg-surface-2"></div>
+        </div>
+        <p class="mt-6 text-ink-2">Waiting for the agent's decision. Runs usually take 5 to 30 seconds.</p>
+      }
+
+      @case (PHASES.FAILED) {
+        <div class="rounded-md bg-scarlet-soft px-4 py-3.5 text-scarlet-ink" role="alert">
+          <p class="font-semibold">The run didn't finish.</p>
+          <p class="mt-1 break-words">{{ view()?.error }}</p>
+        </div>
+        <div class="mt-4">
+          <button type="button" class="btn btn-secondary" (click)="retry.emit()">
+            <svg lucideRotateCcw aria-hidden="true"></svg>
+            Try again
+          </button>
+        </div>
+      }
+
+      @default {
+        @if (triage(); as triage) {
+          <div class="flex flex-col gap-6">
+            <div>
+              <h3 class="font-display text-[1.75rem] leading-tight font-bold tracking-[0.02em] uppercase">
+                {{ ACTION_LABELS[triage.action] }}
+              </h3>
+              <p class="mt-1 text-ink-2">Recommended by the {{ specialistName() }} specialist</p>
+            </div>
+
+            <dl class="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-rule bg-rule">
+              <div class="bg-surface px-4 py-3">
+                <dt class="label-caps text-ink-3">False positive</dt>
+                <dd class="mt-1 text-[1.125rem] font-semibold">{{ triage.false_positive ? 'Yes' : 'No' }}</dd>
+              </div>
+              <div class="bg-surface px-4 py-3">
+                <dt class="label-caps text-ink-3">Confidence</dt>
+                <dd class="mt-1 flex items-center gap-3">
+                  <span class="text-[1.125rem] font-semibold tabular">{{ confidencePercent() }}%</span>
+                  <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+                    <span class="block h-full rounded-full bg-ink" [style.width.%]="confidencePercent()"></span>
+                  </span>
+                </dd>
+              </div>
+            </dl>
+
+            @if (isAwaiting()) {
+              <div class="rounded-md bg-amber-soft px-4 py-4 text-amber-ink">
+                <p class="flex items-center gap-2 font-semibold">
+                  <svg lucideHand [size]="18" aria-hidden="true"></svg>
+                  This reroute needs your approval
+                </p>
+                <p class="mt-1">Nothing changes until you decide. The pause is saved in Postgres, so you can also decide later.</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-primary" [disabled]="isDeciding()" (click)="decide.emit(DECISIONS.APPROVED)">
+                    <svg lucideThumbsUp aria-hidden="true"></svg>
+                    Approve reroute
+                  </button>
+                  <button type="button" class="btn btn-secondary" [disabled]="isDeciding()" (click)="decide.emit(DECISIONS.REJECTED)">
+                    <svg lucideThumbsDown aria-hidden="true"></svg>
+                    Reject
+                  </button>
+                </div>
+                @if (view()?.error; as error) {
+                  <p class="mt-3 text-scarlet-ink" role="alert">{{ error }}</p>
+                }
+              </div>
+            } @else if (humanDecision(); as decision) {
+              <p class="flex items-center gap-2 rounded-md bg-surface-2 px-4 py-3">
+                @if (decision === DECISIONS.APPROVED) {
+                  <svg lucideThumbsUp [size]="18" aria-hidden="true"></svg>
+                  Reroute approved by a human
+                } @else {
+                  <svg lucideThumbsDown [size]="18" aria-hidden="true"></svg>
+                  Reroute rejected by a human
+                }
+              </p>
+            }
+
+            <div>
+              <h4 class="label-caps text-ink-2">Reasoning</h4>
+              <p class="mt-2 max-w-[65ch] leading-relaxed">{{ triage.reasoning }}</p>
+            </div>
+
+            @if (checks().length > 0) {
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="label-caps text-ink-2">Expected outcome</h4>
+                  @if (checksPassed()) {
+                    <span class="label-caps rounded-full bg-green-soft px-2 py-0.5 text-green-ink">Pass</span>
+                  } @else {
+                    <span class="label-caps rounded-full bg-scarlet-soft px-2 py-0.5 text-scarlet-ink">Fail</span>
+                  }
+                </div>
+                <dl class="mt-2 divide-y divide-rule rounded-md border border-rule text-[0.875rem]">
+                  @for (check of checks(); track check.label) {
+                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-2.5">
+                      <dt class="font-medium">{{ check.label }}</dt>
+                      <dd class="row-span-2 self-center">
+                        @switch (check.passed) {
+                          @case (true) {
+                            <svg lucideCheck [size]="18" class="text-green-ink" title="Matches"></svg>
+                          }
+                          @case (false) {
+                            <svg lucideX [size]="18" class="text-scarlet-ink" title="Doesn't match"></svg>
+                          }
+                          @default {
+                            <span class="text-[0.8125rem] text-ink-3">Not checked</span>
+                          }
+                        }
+                      </dd>
+                      <dd class="text-ink-2">
+                        Expected <span class="text-ink">{{ check.expected }}</span>, got
+                        <span class="text-ink">{{ check.actual }}</span>
+                      </dd>
+                    </div>
+                  }
+                </dl>
+              </div>
+            }
+
+            @if (findings().length > 0) {
+              <details class="group rounded-md border border-rule">
+                <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-[0.875rem] text-ink-2 select-none hover:text-ink">
+                  <svg lucideChevronRight [size]="15" class="shrink-0 transition-transform duration-150 group-open:rotate-90" aria-hidden="true"></svg>
+                  All findings for this shipment ({{ findings().length }}), including earlier runs
+                </summary>
+                <ul class="border-t border-rule px-4 py-2">
+                  @for (finding of findings(); track $index) {
+                    <li class="flex flex-wrap items-center gap-3 py-1.5">
+                      <app-carrier-line [carrier]="finding.carrier" />
+                      <app-action-badge [action]="finding.action" />
+                      <span class="ml-auto text-[0.8125rem] text-ink-3 tabular">{{ (finding.confidence * 100).toFixed(0) }}%</span>
+                    </li>
+                  }
+                </ul>
+              </details>
+            }
+          </div>
+        } @else {
+          <div class="m-auto max-w-sm py-10 text-center">
+            <p class="font-display text-[1.25rem] font-bold tracking-[0.04em] uppercase">No result yet</p>
+            <p class="mt-2 text-ink-2">
+              @if (hasShipment()) {
+                Press Execute to send this shipment down its line. You'll see the recommended action, whether it's a
+                false positive, the confidence, and the reasoning.
+              } @else {
+                Choose a shipment first, then press Execute.
+              }
+            </p>
+          </div>
+        }
+      }
+    }
+  </div>
+</section>
+
+<div class="mt-3 flex flex-wrap gap-2">
+  <button type="button" class="btn btn-secondary" [disabled]="!outcome()" (click)="copy.emit()">
+    <svg lucideCopy aria-hidden="true"></svg>
+    Copy to clipboard
+  </button>
+  <button type="button" class="btn btn-secondary" [disabled]="!outcome()" title="CSV export isn't built yet">
+    <svg lucideFileSpreadsheet aria-hidden="true"></svg>
+    Export CSV
+  </button>
+  <button type="button" class="btn btn-secondary" [disabled]="!outcome()" title="PDF export isn't built yet">
+    <svg lucideFileText aria-hidden="true"></svg>
+    Export PDF
+  </button>
+</div>

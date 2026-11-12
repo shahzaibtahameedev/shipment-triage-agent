@@ -1,9 +1,7 @@
 import { tool } from "langchain";
 import { z } from "zod";
-import { readFileSync } from "node:fs";
 import {
     TOOL_NAMES,
-    TOOL_DESCRIPTIONS,
     FIXTURE_FILES,
     TOOL_ERRORS,
     TOOL_MESSAGES,
@@ -12,51 +10,77 @@ import {
     ISO_DATE_PATTERN,
     type CalendarKind,
 } from "./constants.ts";
-
-const FIXTURES = new URL("./fixtures/", import.meta.url);
+import { log, LOG_EVENTS } from "./logger.ts";
+import { redact } from "./tracing.ts";
+import { fixtureUrl, readJson } from "./stores/json-file.ts";
+import { findShipmentForAgent } from "./stores/shipment-lookup.ts";
 
 export const evalHooks = {
     calls: [] as { name: string; args: Record<string, unknown> }[],
     carrierNote: "",
 };
 
-export const getShipmentHistoryTool = tool(
-    async ({ shipment_id }) => {
-        evalHooks.calls.push({ name: TOOL_NAMES.GET_SHIPMENT_HISTORY, args: { shipment_id } });
-        const history = getShipmentHistory(shipment_id);
-        const note = evalHooks.carrierNote;
-        return JSON.stringify(note ? { ...(history as object), carrier_notes: note } : history);
-    },
-    {
-        name: TOOL_NAMES.GET_SHIPMENT_HISTORY,
-        description: TOOL_DESCRIPTIONS.GET_SHIPMENT_HISTORY,
-        schema: z.object({
-            shipment_id: z.string().describe("Shipment ID, e.g. 'SH-1001'"),
-        }),
-    },
-);
+export function createShipmentHistoryTool(description: string) {
+    const shipmentHistoryTool = tool(
+        async ({ shipment_id }) => {
+            const args = { shipment_id };
+            evalHooks.calls.push({ name: TOOL_NAMES.GET_SHIPMENT_HISTORY, args });
+            const history = getShipmentHistory(shipment_id);
+            const note = evalHooks.carrierNote;
+            const toolResult = note ? Object.assign({}, history, { carrier_notes: note }) : history;
+            logToolCall(TOOL_NAMES.GET_SHIPMENT_HISTORY, args, toolResult);
+            const serialized = JSON.stringify(toolResult);
 
-export const checkCustomsCalendarTool = tool(
-    async ({ country_code, date }) => {
-        evalHooks.calls.push({ name: TOOL_NAMES.CHECK_CUSTOMS_CALENDAR, args: { country_code, date } });
-        return JSON.stringify(checkCustomsCalendar(country_code, date));
-    },
-    {
-        name: TOOL_NAMES.CHECK_CUSTOMS_CALENDAR,
-        description: TOOL_DESCRIPTIONS.CHECK_CUSTOMS_CALENDAR,
-        schema: z.object({
-            country_code: z.string().describe("Two-letter ISO country code, e.g. 'AE', 'DE', 'PK'"),
-            date: z.string().describe("ISO 8601 date, YYYY-MM-DD"),
-        }),
-    },
-);
+            return serialized;
+        },
+        {
+            name: TOOL_NAMES.GET_SHIPMENT_HISTORY,
+            description,
+            schema: z.object({
+                shipment_id: z.string().describe("Shipment ID, e.g. 'SH-1001'"),
+            }),
+        },
+    );
 
+    return shipmentHistoryTool;
+}
+
+export function createCustomsCalendarTool(description: string) {
+    const customsCalendarTool = tool(
+        async ({ country_code, date }) => {
+            const args = { country_code, date };
+            evalHooks.calls.push({ name: TOOL_NAMES.CHECK_CUSTOMS_CALENDAR, args });
+            const toolResult = checkCustomsCalendar(country_code, date);
+            logToolCall(TOOL_NAMES.CHECK_CUSTOMS_CALENDAR, args, toolResult);
+            const serialized = JSON.stringify(toolResult);
+
+            return serialized;
+        },
+        {
+            name: TOOL_NAMES.CHECK_CUSTOMS_CALENDAR,
+            description,
+            schema: z.object({
+                country_code: z.string().describe("Two-letter ISO country code, e.g. 'AE', 'DE', 'PK'"),
+                date: z.string().describe("ISO 8601 date, YYYY-MM-DD"),
+            }),
+        },
+    );
+
+    return customsCalendarTool;
+}
+
+// Same PII redaction as the Langfuse traces: logs are shown in the UI
+function logToolCall(name: string, args: Record<string, unknown>, result: unknown): void {
+  log({
+    event: LOG_EVENTS.TOOL_CALL,
+    message: `${name}(${JSON.stringify(args)})`,
+    data: { tool: name, args, result: redact(result) },
+  });
+}
 
 export function getShipmentHistory(shipment_id: string): unknown {
-  const data = readFixture<Record<string, unknown>>(FIXTURE_FILES.SHIPMENTS);
-  const id = String(shipment_id ?? "").trim().toUpperCase();
-  const shipment = data[id];
-  
+  const shipment = findShipmentForAgent(shipment_id);
+
   if (!shipment) {
     return {
       error: TOOL_ERRORS.SHIPMENT_NOT_FOUND,
@@ -64,6 +88,7 @@ export function getShipmentHistory(shipment_id: string): unknown {
       hint: TOOL_MESSAGES.SHIPMENT_NOT_FOUND_HINT,
     };
   }
+
   return shipment;
 }
 
@@ -79,7 +104,7 @@ function checkCustomsCalendar(country_code: string, date: string ): unknown {
   }
 
   const code = String(country_code ?? "").trim().toUpperCase();
-  const entries = readFixture<CalendarEntry[]>(FIXTURE_FILES.CUSTOMS_CALENDAR);
+  const entries = readJson<CalendarEntry[]>(fixtureUrl(FIXTURE_FILES.CUSTOMS_CALENDAR), []);
 
   const match = entries.find((e) => e.country_code === code && e.start <= day && day <= e.end);
 
@@ -92,6 +117,7 @@ function checkCustomsCalendar(country_code: string, date: string ): unknown {
       note: match.note,
     };
   }
+
   return {
     country_code: code,
     date: day,
@@ -99,10 +125,6 @@ function checkCustomsCalendar(country_code: string, date: string ): unknown {
     known_delay_window: false,
     note: TOOL_MESSAGES.NORMAL_WORKING_DAY_NOTE,
   };
-}
-
-function readFixture<T>(fileName: string): T {
-  return JSON.parse(readFileSync(new URL(fileName, FIXTURES), "utf-8")) as T;
 }
 
 interface CalendarEntry {

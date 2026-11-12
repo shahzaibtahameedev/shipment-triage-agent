@@ -1,0 +1,183 @@
+<div class="px-5 pt-6 pb-10 lg:px-8 lg:pt-8">
+  <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="page-title">Logs</h1>
+      <p class="mt-1.5 max-w-[65ch] text-ink-2">
+        Every run, step by step. Each stop on a run's line is one log entry from
+        <code class="font-mono text-[0.8125rem]">logs/agent-log.jsonl</code>.
+      </p>
+    </div>
+    <button type="button" class="btn btn-secondary" [disabled]="logs.isLoading()" (click)="logs.reload()">
+      <svg lucideRefreshCw [class.animate-spin]="logs.isLoading()" aria-hidden="true"></svg>
+      Refresh
+    </button>
+  </header>
+
+  <form class="panel mb-4 grid gap-3 px-4 py-3.5 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.4fr_auto]" (submit)="$event.preventDefault()">
+    <div>
+      <label for="filter-shipment" class="label-caps text-ink-2">Shipment</label>
+      <select id="filter-shipment" class="field mt-1" [value]="shipmentFilter()" (change)="shipmentFilter.set($any($event.target).value)">
+        <option value="">All shipments</option>
+        @for (shipmentId of shipmentOptions(); track shipmentId) {
+          <option [value]="shipmentId">{{ shipmentId }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="filter-level" class="label-caps text-ink-2">Level</label>
+      <select id="filter-level" class="field mt-1 capitalize" [value]="levelFilter()" (change)="levelFilter.set($any($event.target).value)">
+        <option value="">All levels</option>
+        @for (level of levels; track level) {
+          <option [value]="level">{{ level }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="filter-event" class="label-caps text-ink-2">Event</label>
+      <select id="filter-event" class="field mt-1" [value]="eventFilter()" (change)="eventFilter.set($any($event.target).value)">
+        <option value="">All events</option>
+        @for (event of events; track event) {
+          <option [value]="event">{{ EVENT_LABELS[event] }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="filter-search" class="label-caps text-ink-2">Search messages</label>
+      <input
+        id="filter-search"
+        type="search"
+        class="field mt-1"
+        placeholder="e.g. get_shipment_history"
+        [value]="searchText()"
+        (input)="searchText.set($any($event.target).value)"
+      />
+    </div>
+    <div class="flex items-end">
+      <button type="button" class="btn btn-ghost w-full" [disabled]="!hasFilters()" (click)="clearFilters()">Clear</button>
+    </div>
+  </form>
+
+  @if (logs.error(); as error) {
+    <p class="panel px-5 py-6 text-scarlet-ink" role="alert">{{ errorMessage(error) }}</p>
+  } @else if (logs.isLoading() && allEntries().length === 0) {
+    <div class="panel flex flex-col gap-3 px-5 py-5" aria-hidden="true">
+      <div class="h-10 animate-pulse rounded bg-surface-2"></div>
+      <div class="h-10 animate-pulse rounded bg-surface-2"></div>
+      <div class="h-10 animate-pulse rounded bg-surface-2"></div>
+    </div>
+  } @else if (allEntries().length === 0) {
+    <div class="panel px-5 py-12 text-center">
+      <p class="font-medium">No runs logged yet</p>
+      <p class="mx-auto mt-1 max-w-sm text-ink-2">
+        Run the agent from <a routerLink="/run" class="font-medium text-ink underline">Run Agent</a> and every step
+        shows up here.
+      </p>
+    </div>
+  } @else if (runs().length === 0) {
+    <div class="panel px-5 py-12 text-center">
+      <p class="font-medium">No log entries match these filters</p>
+      <button type="button" class="btn btn-secondary mt-3" (click)="clearFilters()">Clear filters</button>
+    </div>
+  } @else {
+    <p class="mb-2 text-[0.8125rem] text-ink-3 tabular">{{ runs().length }} runs</p>
+    <ul class="panel divide-y divide-rule overflow-hidden">
+      @for (run of runs(); track run.key) {
+        <li>
+          <button
+            type="button"
+            class="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-surface-2 md:grid-cols-[auto_8.5rem_minmax(0,1fr)_auto]"
+            [attr.aria-expanded]="expandedRuns().has(run.key)"
+            (click)="toggleRun(run.key)"
+          >
+            <svg
+              lucideChevronRight
+              [size]="16"
+              class="text-ink-3 transition-transform duration-150"
+              [class.rotate-90]="expandedRuns().has(run.key)"
+              aria-hidden="true"
+            ></svg>
+
+            <span class="min-w-0">
+              <span class="block font-display text-[1.0625rem] leading-tight font-bold tracking-[0.03em]">{{ run.shipmentId }}</span>
+              <span class="block text-[0.8125rem] text-ink-3">{{ kindLabel(run.kind) }} · {{ formatDate(run.startedAt) }}</span>
+            </span>
+
+            <span class="col-span-2 col-start-2 flex min-w-0 items-center md:col-span-1 md:col-start-auto" aria-hidden="true">
+              <span class="relative flex items-center gap-3 py-1">
+                <span class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full" [style.background]="lineColor(run)"></span>
+                @for (stop of trailStops(run); track $index) {
+                  <span
+                    class="relative size-2.5 rounded-full border-2"
+                    [style.border-color]="stopColor(stop, run)"
+                    [style.background]="isFilledStop(stop.event) ? stopColor(stop, run) : 'var(--surface)'"
+                  ></span>
+                }
+              </span>
+            </span>
+
+            <span class="col-span-2 col-start-2 flex flex-wrap items-center gap-2 md:col-span-1 md:col-start-auto md:justify-end">
+              @if (run.action) {
+                <app-action-badge [action]="run.action" />
+              }
+              <app-status-badge [kind]="OUTCOME_BADGES[run.outcome].kind" [label]="OUTCOME_BADGES[run.outcome].label" />
+              <span class="w-16 text-right text-[0.8125rem] text-ink-3 tabular">{{ seconds(run.durationMs) }} s</span>
+            </span>
+          </button>
+
+          @if (expandedRuns().has(run.key)) {
+            <div class="border-t border-rule bg-surface-2/60 px-4 py-4">
+              @if (run.carrier) {
+                <div class="mb-3 ml-1">
+                  <app-carrier-line [carrier]="run.carrier" />
+                </div>
+              }
+              <ol class="relative ml-1">
+                @for (entry of run.entries; track $index; let index = $index, last = $last) {
+                  <li class="relative grid grid-cols-[4.5rem_1.25rem_minmax(0,1fr)] gap-x-2">
+                    <span class="pt-0.5 text-right text-[0.75rem] text-ink-3 tabular">{{ offset(entry, run) }}</span>
+                    <span class="relative flex justify-center" aria-hidden="true">
+                      @if (!last) {
+                        <span class="absolute top-3 bottom-0 w-1" [style.background]="lineColor(run)"></span>
+                      }
+                      <span
+                        class="relative mt-1 size-3 rounded-full border-[3px] bg-surface"
+                        [style.border-color]="stopColor(entry, run)"
+                        [style.background]="isFilledStop(entry.event) ? stopColor(entry, run) : 'var(--surface)'"
+                      ></span>
+                    </span>
+                    <div class="min-w-0 pb-4">
+                      <p class="flex flex-wrap items-center gap-x-2">
+                        <span class="label-caps" [class.text-scarlet-ink]="entry.level === 'error'" [class.text-amber-ink]="entry.level === 'warn'">
+                          {{ eventLabel(entry.event) }}
+                        </span>
+                        @if (entry.level !== 'info') {
+                          <span class="text-[0.75rem] text-ink-3 uppercase">{{ entry.level }}</span>
+                        }
+                      </p>
+                      <p class="mt-0.5 font-mono text-[0.8125rem] break-words text-ink-2">{{ entry.message }}</p>
+                      @if (entry.data !== undefined && entry.data !== null) {
+                        <button
+                          type="button"
+                          class="mt-1 text-[0.8125rem] font-medium text-ink underline decoration-rule-strong underline-offset-2 hover:decoration-ink"
+                          [attr.aria-expanded]="expandedData().has(entryKey(entry, index))"
+                          (click)="toggleData(entryKey(entry, index))"
+                        >
+                          {{ expandedData().has(entryKey(entry, index)) ? 'Hide data' : 'Show data' }}
+                        </button>
+                        @if (expandedData().has(entryKey(entry, index))) {
+                          <div class="mt-2 rounded-md border border-rule bg-surface px-3 py-2.5">
+                            <app-json-tree [value]="entry.data" [label]="EVENT_LABELS[entry.event] + ' data'" [initialDepth]="2" [showToolbar]="false" />
+                          </div>
+                        }
+                      }
+                    </div>
+                  </li>
+                }
+              </ol>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

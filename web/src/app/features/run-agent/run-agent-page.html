@@ -1,0 +1,129 @@
+<div class="px-5 pt-6 pb-10 lg:px-8 lg:pt-8">
+  <header class="mb-6">
+    <h1 class="page-title">Run Agent</h1>
+    <p class="mt-1.5 max-w-[65ch] text-ink-2">
+      Pick a shipment, send it to its carrier specialist, and read the decision.
+    </p>
+  </header>
+
+  <div class="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1fr)_17rem_minmax(0,1.15fr)]">
+    <section class="panel flex min-w-0 flex-col" aria-labelledby="shipment-heading">
+      <header class="border-b border-rule px-5 py-3.5">
+        <h2 id="shipment-heading" class="font-display text-[1.125rem] font-bold tracking-[0.05em] uppercase">Shipment</h2>
+      </header>
+
+      <div class="flex flex-col gap-5 px-5 py-5">
+        <div>
+          <label for="shipment-picker" class="label-caps text-ink-2">Choose a shipment</label>
+          <select
+            id="shipment-picker"
+            class="field mt-1.5"
+            [value]="selectionKey()"
+            [disabled]="lists.isLoading()"
+            (change)="selectFromKey($any($event.target).value)"
+          >
+            <option value="" disabled [selected]="!selectionKey()">Select a shipment…</option>
+            @if (lists.hasValue()) {
+              <optgroup label="Shipments">
+                @for (item of lists.value().shipments; track item.shipment_id) {
+                  <option
+                    [value]="SOURCES.SHIPMENT + KEY_SEPARATOR + item.shipment_id"
+                    [selected]="selectionKey() === SOURCES.SHIPMENT + KEY_SEPARATOR + item.shipment_id"
+                  >
+                    {{ item.shipment_id }} · {{ item.carrier }} · {{ item.cargo }}
+                  </option>
+                }
+              </optgroup>
+              <optgroup label="Test shipments">
+                @for (item of lists.value().testShipments; track item.shipment.shipment_id) {
+                  <option
+                    [value]="SOURCES.TEST + KEY_SEPARATOR + item.shipment.shipment_id"
+                    [selected]="selectionKey() === SOURCES.TEST + KEY_SEPARATOR + item.shipment.shipment_id"
+                  >
+                    {{ item.shipment.shipment_id }} · {{ item.shipment.carrier }} · {{ item.expected.notes || item.shipment.cargo }}
+                  </option>
+                }
+              </optgroup>
+            }
+          </select>
+          @if (lists.error(); as error) {
+            <p class="mt-1.5 text-[0.875rem] text-scarlet-ink" role="alert">{{ errorMessage(error) }}</p>
+          }
+        </div>
+
+        @if (selected.isLoading()) {
+          <div class="flex flex-col gap-3" aria-hidden="true">
+            <div class="h-7 w-2/5 animate-pulse rounded bg-surface-2"></div>
+            <div class="h-4 w-4/5 animate-pulse rounded bg-surface-2"></div>
+            <div class="h-40 animate-pulse rounded bg-surface-2"></div>
+          </div>
+        } @else if (selected.error(); as error) {
+          <p class="rounded-md bg-scarlet-soft px-4 py-3 text-scarlet-ink" role="alert">{{ errorMessage(error) }}</p>
+        } @else if (selectedShipment(); as shipment) {
+          <div>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p class="font-display text-[1.625rem] leading-none font-bold tracking-[0.03em]">{{ shipment.shipment_id }}</p>
+              <app-carrier-line [carrier]="shipment.carrier" />
+              @if (selection()?.source === SOURCES.TEST) {
+                <span class="label-caps rounded-full bg-surface-2 px-2 py-0.5 text-ink-2">Test</span>
+              }
+            </div>
+            <dl class="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-[0.875rem]">
+              <dt class="text-ink-3">Route</dt>
+              <dd>{{ routeLabel(shipment) }}</dd>
+              <dt class="text-ink-3">Cargo</dt>
+              <dd>{{ shipment.cargo ?? '—' }}</dd>
+              @if (lastScan(shipment); as scan) {
+                <dt class="text-ink-3">Last scan</dt>
+                <dd>
+                  <span class="mr-1.5 rounded bg-surface-2 px-1.5 py-px font-mono text-[0.75rem]">{{ scan.code }}</span>
+                  {{ scan.note }}
+                </dd>
+              }
+              <dt class="text-ink-3">Promised</dt>
+              <dd class="tabular">{{ formatDate(shipment.promised_delivery) }}</dd>
+            </dl>
+          </div>
+
+          <div class="border-t border-rule pt-3">
+            <app-json-tree [value]="shipment" [label]="shipment.shipment_id + ' data'" [initialDepth]="0">
+              <h3 treeTitle class="label-caps text-ink-2">Shipment data</h3>
+            </app-json-tree>
+          </div>
+        } @else {
+          <div class="rounded-md border border-dashed border-rule-strong px-5 py-8 text-center">
+            <p class="font-medium">No shipment selected</p>
+            <p class="mt-1 text-[0.875rem] text-ink-2">
+              Pick one above, or open it from
+              <a routerLink="/shipments" class="font-medium text-ink underline">Shipments</a> or
+              <a routerLink="/test-shipments" class="font-medium text-ink underline">Test Shipments</a>.
+            </p>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="flex flex-col items-center pt-2 md:pt-6" aria-label="Agent path">
+      <app-execute-button
+        [running]="isRunning()"
+        [disabled]="!selectedShipment()"
+        [startedAt]="runView()?.startedAt ?? null"
+        [lineColor]="lineColor()"
+        [statusText]="executeStatus()"
+        [hint]="executeHint()"
+        (execute)="execute()"
+      />
+      <app-line-diagram class="-mt-2 w-full" [carrier]="carrier()" [phase]="journeyPhase()" [approval]="approvalState()" />
+    </section>
+
+    <app-result-panel
+      class="md:col-span-2 xl:col-span-1"
+      [view]="runView()"
+      [expected]="selected.hasValue() ? selected.value().expected : null"
+      [hasShipment]="!!selectedShipment()"
+      (decide)="decide($event)"
+      (retry)="execute()"
+      (copy)="copyResult()"
+    />
+  </div>
+</div>

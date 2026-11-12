@@ -1,0 +1,222 @@
+<div class="px-5 pt-6 pb-10 lg:px-8 lg:pt-8">
+  <header class="mb-6">
+    <h1 class="page-title">Test Shipments</h1>
+    <p class="mt-1.5 max-w-[65ch] text-ink-2">
+      Known scenarios with the answer the agent should give. Run one to compare the agent's decision with the expected
+      outcome.
+    </p>
+  </header>
+
+  <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_27rem]">
+    <section class="panel min-w-0 overflow-hidden" aria-label="Test shipment list">
+      @if (testShipments.error(); as error) {
+        <p class="px-5 py-6 text-scarlet-ink" role="alert">{{ errorMessage(error) }}</p>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <caption class="sr-only">Test shipments</caption>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Carrier</th>
+                <th scope="col">Scenario</th>
+                <th scope="col">Expected</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (testShipments.isLoading()) {
+                @for (row of skeletonRows; track row) {
+                  <tr aria-hidden="true">
+                    <td colspan="4"><div class="h-5 animate-pulse rounded bg-surface-2"></div></td>
+                  </tr>
+                }
+              } @else {
+                @for (item of list(); track item.shipment.shipment_id) {
+                  <tr
+                    class="cursor-pointer"
+                    [class.is-selected]="item.shipment.shipment_id === selectedId()"
+                    (click)="select(item.shipment.shipment_id)"
+                  >
+                    <td>
+                      <button
+                        type="button"
+                        class="font-display text-[1rem] font-bold tracking-[0.03em] whitespace-nowrap hover:underline"
+                        [attr.aria-current]="item.shipment.shipment_id === selectedId() ? 'true' : null"
+                        (click)="$event.stopPropagation(); select(item.shipment.shipment_id)"
+                      >
+                        {{ item.shipment.shipment_id }}
+                      </button>
+                    </td>
+                    <td><app-carrier-line [carrier]="item.shipment.carrier" /></td>
+                    <td class="min-w-64">
+                      <p>{{ item.expected.notes || '—' }}</p>
+                      <p class="mt-0.5 text-[0.8125rem] text-ink-3">{{ routeLabel(item.shipment) }}</p>
+                    </td>
+                    <td class="min-w-56">
+                      <p class="text-[0.875rem] font-medium">{{ falsePositiveLabel(item.expected.false_positive) }}</p>
+                      <div class="mt-1.5 flex flex-wrap gap-1.5">
+                        @for (action of item.expected.actions; track action) {
+                          <app-action-badge [action]="action" />
+                        } @empty {
+                          <span class="text-[0.8125rem] text-ink-3">Any action</span>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="py-10 text-center">
+                      <p class="font-medium">No test shipments</p>
+                      <p class="mt-1 text-ink-2">Test shipments live in fixtures/test-shipments.json.</p>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <aside #detailPane class="panel min-w-0 scroll-mt-4 xl:sticky xl:top-6" aria-label="Test shipment details">
+      @if (selected(); as item) {
+        <header class="flex flex-wrap items-center gap-3 border-b border-rule px-5 py-3.5">
+          <h2 class="font-display text-[1.375rem] leading-none font-bold tracking-[0.03em]">{{ item.shipment.shipment_id }}</h2>
+          <app-carrier-line [carrier]="item.shipment.carrier" />
+          @if (mode() === MODES.EDIT) {
+            <button type="button" class="btn btn-ghost btn-sm ml-auto" aria-label="Cancel editing" (click)="cancelEdit()">
+              <svg lucideX aria-hidden="true"></svg>
+            </button>
+          }
+        </header>
+
+        @if (mode() === MODES.EDIT) {
+          <form class="flex flex-col gap-5 px-5 py-5" (submit)="$event.preventDefault(); save(item.shipment.shipment_id)">
+            <fieldset>
+              <legend class="label-caps text-ink-2">Expected verdict</legend>
+              <div class="mt-2 inline-flex overflow-hidden rounded-md border border-rule-strong">
+                @for (choice of choiceOrder; track choice) {
+                  <label
+                    class="cursor-pointer border-r border-rule-strong px-3.5 py-1.5 text-[0.875rem] last:border-r-0 has-[:checked]:bg-navy-950 has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--focus)]"
+                  >
+                    <input
+                      type="radio"
+                      name="false-positive"
+                      class="sr-only"
+                      [value]="choice"
+                      [checked]="draftChoice() === choice"
+                      (change)="draftChoice.set(choice)"
+                    />
+                    @switch (choice) {
+                      @case (CHOICES.YES) { False positive }
+                      @case (CHOICES.NO) { Real exception }
+                      @default { Either }
+                    }
+                  </label>
+                }
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend class="label-caps text-ink-2">Acceptable actions</legend>
+              <p class="mt-1 text-[0.8125rem] text-ink-3">The run passes if the agent picks any of these. None checked means any action.</p>
+              <div class="mt-2 grid gap-1.5 sm:grid-cols-2">
+                @for (action of allActions; track action) {
+                  <label class="flex cursor-pointer items-center gap-2 text-[0.875rem]">
+                    <input
+                      type="checkbox"
+                      class="size-4 accent-[var(--navy-950)]"
+                      [checked]="draftActions().includes(action)"
+                      (change)="toggleAction(action, $any($event.target).checked)"
+                    />
+                    {{ ACTION_LABELS[action] }}
+                  </label>
+                }
+              </div>
+            </fieldset>
+
+            <div>
+              <label for="expected-notes" class="label-caps text-ink-2">Scenario</label>
+              <textarea
+                id="expected-notes"
+                class="field mt-1.5"
+                rows="2"
+                [value]="draftNotes()"
+                (input)="draftNotes.set($any($event.target).value)"
+              ></textarea>
+            </div>
+
+            <app-json-editor [(text)]="draftShipment" label="Shipment JSON" inputId="test-shipment-json" [rows]="14" />
+
+            @if (saveError(); as error) {
+              <div class="rounded-md bg-scarlet-soft px-4 py-3 text-[0.875rem] text-scarlet-ink" role="alert">
+                <p class="font-semibold">{{ error }}</p>
+                @if (saveDetails().length > 0) {
+                  <ul class="mt-1 list-disc pl-5">
+                    @for (detail of saveDetails(); track detail) {
+                      <li>{{ detail }}</li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+
+            <div class="flex justify-end gap-2">
+              <button type="button" class="btn btn-ghost" (click)="cancelEdit()">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="saving()">
+                {{ saving() ? 'Saving…' : 'Save changes' }}
+              </button>
+            </div>
+          </form>
+        } @else {
+          <div class="flex flex-col gap-5 px-5 py-5">
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-primary" (click)="runAgent(item.shipment.shipment_id)">
+                Run agent
+                <svg lucideArrowRight aria-hidden="true"></svg>
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="startEdit(item)">
+                <svg lucidePencil aria-hidden="true"></svg>
+                Edit
+              </button>
+              <app-delete-confirm
+                class="ml-auto"
+                [question]="'Delete ' + item.shipment.shipment_id + '?'"
+                [busy]="deleting()"
+                (confirmed)="remove(item.shipment.shipment_id)"
+              />
+            </div>
+
+            <div class="rounded-md bg-surface-2 px-4 py-3.5">
+              <h3 class="label-caps text-ink-2">Expected outcome</h3>
+              <p class="mt-1.5 font-medium">{{ falsePositiveLabel(item.expected.false_positive) }}</p>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                @for (action of item.expected.actions; track action) {
+                  <app-action-badge [action]="action" />
+                } @empty {
+                  <span class="text-[0.875rem] text-ink-3">Any action</span>
+                }
+              </div>
+              @if (item.expected.notes) {
+                <p class="mt-2.5 text-[0.875rem] text-ink-2">{{ item.expected.notes }}</p>
+              }
+            </div>
+
+            <div class="border-t border-rule pt-3">
+              <app-json-tree [value]="item.shipment" [label]="item.shipment.shipment_id + ' data'" [initialDepth]="0">
+                <h3 treeTitle class="label-caps text-ink-2">Shipment data</h3>
+              </app-json-tree>
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="px-5 py-12 text-center">
+          <p class="font-medium">No test shipment selected</p>
+          <p class="mx-auto mt-1 max-w-xs text-[0.875rem] text-ink-2">
+            Select a row to see what the agent should answer, edit it, or run it.
+          </p>
+        </div>
+      }
+    </aside>
+  </div>
+</div>

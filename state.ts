@@ -34,7 +34,7 @@ export type TriageStateType = typeof TriageState.State;
 export function buildEvent(shipmentId: string): ExceptionEvent {
   const shipment = getShipmentHistory(shipmentId) as Record<string, unknown>;
   if ("error" in shipment) {
-    throw new Error(`Shipment ${shipmentId} not found in fixtures/shipments.json`);
+    throw new Error(`Shipment ${shipmentId} not found`);
   }
 
   let { carrier, scans } = shipment as { carrier: string; scans: { code: string }[] } ||

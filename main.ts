@@ -1,84 +1,10 @@
-import { Command, INTERRUPT, isInterrupted, type StateSnapshot } from "@langchain/langgraph";
-import { buildGraph } from "./graph.ts";
 import { HUMAN_DECISIONS, type HumanDecision } from "./constants.ts";
-import { buildEvent, type TriageStateType } from "./state.ts";
-import type { ApprovalRequest, ApprovalResponse } from "./approval.ts";
-import { log } from "./logger.ts";
-import { trace } from "@opentelemetry/api";
-import { startTracing, stopTracing, traceRun } from "./tracing.ts";
+import { startTracing, stopTracing } from "./tracing.ts";
+import { closeGraph, resumeTriage, startTriage, RunConflictError, RUN_STATUSES, type RunOutcome } from "./triage-runner.ts";
 
 const USAGE = `Usage:
   npm run triage -- SH-1002
   npm run resume -- SH-1002 approved|rejected`;
-
-async function runTriage(shipmentId: string): Promise<void> {
-  const event = buildEvent(shipmentId);
-  trace.getActiveSpan()?.setAttribute("carrier", event.carrier ?? "");
-  const config = { configurable: { thread_id: shipmentId } };
-  const { graph, checkpointer } = await buildGraph();
-
-  try {
-    const graphState = await graph.getState(config);
-    const isPendingApproval = isWaitingForApproval(graphState);
-    log(`Starting triage for shipment: ${shipmentId}`);
-
-    if (isPendingApproval) {
-      log(`${shipmentId} is already waiting for approval.`);
-      log(formatResumeCommands(shipmentId));
-      return;
-    }
-
-    const initialGraphState = { event, triage_result: null, needs_human_approval: false, human_decision: null };
-    
-    const result = await graph.invoke(initialGraphState, config);
-    const isInterrupt = isInterrupted<ApprovalRequest>(result);
-
-    if (isInterrupt) {
-      log(`Triage for ${shipmentId} was interrupted for human input, checkpoint saved to Postgres`);
-      const approvalRequest = JSON.stringify(result[INTERRUPT][0]?.value, null, 2);
-      log(`Approval request ${approvalRequest}`);
-      log(`${formatResumeCommands(shipmentId)}`)
-      log(`${shipmentId} is waiting for human approval. Details in log.txt`);
-      
-      return;
-    }
-
-    log(`${shipmentId} Triage Completed`);
-    log(`Final state: ${formatFinalState(result)}`)
-  } finally {
-    await checkpointer.end();
-  }
-}
-
-async function runResume(shipmentId: string, decision: HumanDecision): Promise<void> {
-  const config = { configurable: { thread_id: shipmentId } };
-  const { graph, checkpointer } = await buildGraph();
-  const graphState = await graph.getState(config);
-  const isPendingApproval = isWaitingForApproval(graphState);
-  trace.getActiveSpan()?.setAttribute("carrier", graphState.values.event?.carrier ?? "");
-
-  try {
-    if (!isPendingApproval) {
-      log(`Nothing to resume: ${shipmentId} is not waiting for approval.`);
-      log(`Start it with: npm run triage -- ${shipmentId}`);
-      return;
-    }
-
-    const resume: ApprovalResponse = { decision };
-    log(`Resuming triage for shipment: ${shipmentId} with command: ${decision}`);
-    const result = await graph.invoke(new Command({ resume }), config);
-
-
-    log(`${shipmentId} Triage Completed`);
-    log(`Final state: ${formatFinalState(result)}`)
-  } finally {
-    await checkpointer.end();
-  }
-}
-
-function isWaitingForApproval(snapshot: StateSnapshot): boolean {
-  return snapshot.tasks.some((task) => task.interrupts.length > 0);
-}
 
 function isHumanDecision(value: string | undefined): value is HumanDecision {
   return (Object.values(HUMAN_DECISIONS) as (string | undefined)[]).includes(value);
@@ -92,14 +18,15 @@ function formatResumeCommands(shipmentId: string): string {
   );
 }
 
-function formatFinalState(state: TriageStateType): string {
-  const finalState = {
-    triage_result: state.triage_result,
-    needs_human_approval: state.needs_human_approval,
-    human_decision: state.human_decision,
-    carrier_findings: state.carrier_findings,
-  };
-  return JSON.stringify(finalState, null, 2);
+function printOutcome(outcome: RunOutcome): void {
+  if (outcome.status === RUN_STATUSES.AWAITING_APPROVAL) {
+    console.log(`Approval request ${JSON.stringify(outcome.approvalRequest, null, 2)}`);
+    console.log(formatResumeCommands(outcome.shipmentId));
+
+    return;
+  }
+
+  console.log(`Final state: ${JSON.stringify(outcome.finalState, null, 2)}`);
 }
 
 const [command, rawShipmentId, decision] = process.argv.slice(2);
@@ -108,13 +35,22 @@ const shipmentId = rawShipmentId?.trim().toUpperCase();
 startTracing();
 try {
   if (command === "triage" && shipmentId) {
-    await traceRun("triage", shipmentId, () => runTriage(shipmentId));
+    const outcome = await startTriage(shipmentId);
+    printOutcome(outcome);
   } else if (command === "resume" && shipmentId && isHumanDecision(decision)) {
-    await traceRun("resume", shipmentId, () => runResume(shipmentId, decision));
+    const outcome = await resumeTriage(shipmentId, decision);
+    printOutcome(outcome);
   } else {
     console.error(USAGE);
     process.exitCode = 1;
   }
+} catch (error) {
+  if (!(error instanceof RunConflictError)) {
+    throw error;
+  }
+  console.error(error.message);
+  process.exitCode = 1;
 } finally {
+  await closeGraph();
   await stopTracing();
 }

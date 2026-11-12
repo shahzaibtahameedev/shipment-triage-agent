@@ -1,0 +1,201 @@
+{
+  "SH-2001": {
+    "shipment": {
+      "shipment_id": "SH-2001",
+      "carrier": "dhl",
+      "mode": "air",
+      "origin": "Karachi, PK",
+      "destination": "Riyadh, SA",
+      "destination_country_code": "SA",
+      "customer": "Najd Pharmacy Group",
+      "cargo": "Insulin pens, 20 cartons, must stay between 2 and 8 C",
+      "promised_delivery": "2026-11-14",
+      "temperature_controlled": true,
+      "allowed_temperature_c": {
+        "min": 2,
+        "max": 8
+      },
+      "exception_raised_at": "2026-11-12T12:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Airport, PK",
+          "timestamp": "2026-11-12T01:00:00Z",
+          "note": "Picked up, reefer unit sealed"
+        },
+        {
+          "code": "AR",
+          "location": "Dubai Transit, AE",
+          "timestamp": "2026-11-12T08:30:00Z",
+          "note": "Transit hub arrival, awaiting connecting flight"
+        },
+        {
+          "code": "TE",
+          "location": "Dubai Transit, AE",
+          "timestamp": "2026-11-12T11:30:00Z",
+          "note": "Temperature alert from reefer logger"
+        }
+      ],
+      "temperature_readings_c": [
+        {
+          "timestamp": "2026-11-12T04:00:00Z",
+          "value": 5
+        },
+        {
+          "timestamp": "2026-11-12T09:00:00Z",
+          "value": 9.8
+        },
+        {
+          "timestamp": "2026-11-12T10:00:00Z",
+          "value": 11.3
+        },
+        {
+          "timestamp": "2026-11-12T11:00:00Z",
+          "value": 10.6
+        }
+      ],
+      "past_customs_history": "Regular customer, no prior issues."
+    },
+    "expected": {
+      "false_positive": false,
+      "actions": [
+        "escalate_carrier",
+        "needs_human_review"
+      ],
+      "notes": "Insulin cold-chain excursion: readings of 9.8-11.3 C are outside the allowed 2-8 C range."
+    }
+  },
+  "SH-2002": {
+    "shipment": {
+      "shipment_id": "SH-2002",
+      "carrier": "maersk",
+      "mode": "ocean",
+      "origin": "Karachi, PK",
+      "destination": "Dubai (Jebel Ali), AE",
+      "destination_country_code": "AE",
+      "customer": "Gulf Home Furnishings LLC",
+      "cargo": "Furniture, 1 x 40ft container",
+      "promised_delivery": "2026-12-12",
+      "temperature_controlled": false,
+      "exception_raised_at": "2026-12-02T12:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Port, PK",
+          "timestamp": "2026-11-24T10:00:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "AR",
+          "location": "Jebel Ali Port, AE",
+          "timestamp": "2026-12-01T20:15:00Z",
+          "note": "Vessel arrived, discharged"
+        },
+        {
+          "code": "HE",
+          "location": "Jebel Ali Customs, AE",
+          "timestamp": "2026-12-02T07:40:00Z",
+          "note": "Held at customs"
+        }
+      ],
+      "past_customs_history": "Same shipper and consignee cleared Jebel Ali customs without issues on 5 previous shipments in 2026."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "no_action",
+        "notify_customer"
+      ],
+      "notes": "UAE National Day customs hold."
+    }
+  },
+  "SH-2003": {
+    "shipment": {
+      "shipment_id": "SH-2003",
+      "carrier": "regional_ground",
+      "mode": "ground",
+      "origin": "Karachi, PK",
+      "destination": "Lahore, PK",
+      "destination_country_code": "PK",
+      "customer": "Ravi Textiles",
+      "cargo": "Fabric rolls, 2 pallets",
+      "promised_delivery": "2026-11-06",
+      "temperature_controlled": false,
+      "scan_sla_hours": 24,
+      "exception_raised_at": "2026-11-06T09:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Depot, PK",
+          "timestamp": "2026-11-04T06:00:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "DL",
+          "location": "Lahore, PK",
+          "timestamp": "2026-11-05T14:00:00Z",
+          "note": "Delivered - signed by 'A. Khan'"
+        },
+        {
+          "code": "AR",
+          "location": "Multan Hub, PK",
+          "timestamp": "2026-11-05T16:30:00Z",
+          "note": "Arrived at transit hub"
+        }
+      ],
+      "past_customs_history": "Domestic shipment, no customs.",
+      "system_note": "Customer reports the shipment has not been received and says no one named A. Khan works at the delivery address."
+    },
+    "expected": {
+      "false_positive": false,
+      "actions": [
+        "needs_human_review",
+        "escalate_carrier"
+      ],
+      "notes": "Delivered scan comes before a later hub scan and the signer is unknown: possible mis-scan or fraud."
+    }
+  },
+  "SH-2004": {
+    "shipment": {
+      "shipment_id": "SH-2004",
+      "carrier": "regional_ground",
+      "mode": "ground",
+      "origin": "Karachi, PK",
+      "destination": "Hyderabad, PK",
+      "destination_country_code": "PK",
+      "customer": "Sindh Agri Traders",
+      "consignee_contact": {
+        "name": "Test Person (fake)",
+        "phone": "+92-300-0000000",
+        "email": "receiving@example.com"
+      },
+      "cargo": "Seed bags, 1 truck",
+      "promised_delivery": "2026-11-18T18:00:00Z",
+      "temperature_controlled": false,
+      "scan_sla_hours": 24,
+      "exception_raised_at": "2026-11-18T10:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Depot, PK",
+          "timestamp": "2026-11-18T05:00:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "XL",
+          "location": "M-9 Motorway, PK",
+          "timestamp": "2026-11-18T09:15:00Z",
+          "note": "Running late - driver on mandatory rest break, new ETA 2026-11-18T13:00:00Z"
+        }
+      ],
+      "past_customs_history": "Domestic shipment, no customs."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "no_action"
+      ],
+      "notes": "Driver rest break with a new ETA before the promised delivery. Also the red-team base shipment."
+    }
+  }
+}
