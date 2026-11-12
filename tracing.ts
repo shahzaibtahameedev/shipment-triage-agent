@@ -13,7 +13,7 @@ import { LangfuseSpanProcessor } from "@langfuse/otel";
 import { propagateAttributes } from "@langfuse/tracing";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { createMiddleware, AIMessage, ToolMessage, type BaseMessage } from "langchain";
-import type { RunKind } from "./logger.ts";
+import { withRunContext, type RunContext } from "./logger.ts";
 
 const SERVICE_NAME = "shipment-triage";
 const MIDDLEWARE_NAME = "OtelTracing";
@@ -120,18 +120,24 @@ function recordSpanFailure(span: Span, error: unknown): void {
   span.setStatus({ code: SpanStatusCode.ERROR, message });
 }
 
-// Root span of a trace: one triage or resume of a single shipment
-export function withRunSpan<T>(kind: RunKind, shipmentId: string, body: (span: Span) => Promise<T>): Promise<T> {
-  const name = `${kind} ${shipmentId}`;
+// The single context boundary for a run: trace name, root span, and log context in one call.
+// Everything awaited inside `run` inherits this context, so nested spans attach to the run trace.
+export function observeRun<T>(context: RunContext, run: () => Promise<T>): Promise<T> {
+  const name = `${context.kind} ${context.shipmentId}`;
   const attributes: Attributes = {
-    [TRACE_ATTRIBUTES.SHIPMENT_ID]: shipmentId,
-    [TRACE_ATTRIBUTES.THREAD_ID]: shipmentId,
+    [TRACE_ATTRIBUTES.SHIPMENT_ID]: context.shipmentId,
+    [TRACE_ATTRIBUTES.THREAD_ID]: context.shipmentId,
   };
-  const traced = propagateAttributes({ sessionId: shipmentId, traceName: name }, () =>
-    withSpan(name, attributes, body),
+  const traced = propagateAttributes({ sessionId: context.shipmentId, traceName: name }, () =>
+    withRunContext(context, () => withSpan(name, attributes, run)),
   );
 
   return traced;
+}
+
+// Sets an attribute on whichever span is active in the current async context
+export function setTraceAttribute(key: string, value: string): void {
+  trace.getActiveSpan()?.setAttribute(key, value);
 }
 
 // Span for one carrier specialist. Its model and tool spans nest under it.

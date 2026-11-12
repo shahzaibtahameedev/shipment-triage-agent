@@ -1,12 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Command, INTERRUPT, isInterrupted, type StateSnapshot } from "@langchain/langgraph";
-import type { Span } from "@opentelemetry/api";
 import { buildGraph } from "./graph.ts";
 import { buildEvent, type CarrierFinding, type TriageStateType } from "./state.ts";
 import type { ApprovalRequest, ApprovalResponse } from "./approval.ts";
 import type { HumanDecision, TriageResult } from "./constants.ts";
-import { log, withRunContext, LOG_EVENTS, LOG_LEVELS, RUN_KINDS, type RunContext } from "./logger.ts";
-import { withRunSpan, TRACE_ATTRIBUTES } from "./tracing.ts";
+import { log, LOG_EVENTS, LOG_LEVELS, RUN_KINDS, type RunContext } from "./logger.ts";
+import { observeRun, setTraceAttribute, TRACE_ATTRIBUTES } from "./tracing.ts";
 
 export const RUN_STATUSES = {
   COMPLETED: "completed",
@@ -94,7 +93,9 @@ export async function resumeTriage(shipmentId: string, decision: HumanDecision):
   return outcome;
 }
 
-// One run per shipment at a time, so two callers can't advance the same checkpoint
+// One run per shipment at a time, so two callers can't advance the same checkpoint.
+// observeRun is the single observability boundary: everything inside runs under the
+// run's root span and log context.
 async function runExclusive(shipmentId: string, request: RunRequest): Promise<RunOutcome> {
   if (activeShipments.has(shipmentId)) {
     throw new RunConflictError(`${shipmentId} is already running.`);
@@ -104,94 +105,68 @@ async function runExclusive(shipmentId: string, request: RunRequest): Promise<Ru
   const context: RunContext = { runId: randomUUID(), shipmentId, kind: request.kind };
 
   try {
-    const outcome = await withRunContext(context, () => traceRun(context, request));
-
-    return outcome;
-  } finally {
-    activeShipments.delete(shipmentId);
-  }
-}
-
-async function traceRun(context: RunContext, request: RunRequest): Promise<RunOutcome> {
-  try {
-    const outcome = await withRunSpan(context.kind, context.shipmentId, (span) => execute(context, request, span));
+    const outcome = await observeRun(context, () => runTriage(context, request));
 
     return outcome;
   } catch (error) {
     logRunFailure(context, error);
     throw error;
+  } finally {
+    activeShipments.delete(shipmentId);
   }
 }
 
-async function execute(context: RunContext, request: RunRequest, runSpan: Span): Promise<RunOutcome> {
-  if (request.kind === RUN_KINDS.RESUME) {
-    const resumed = await executeResume(context, request.decision, runSpan);
-
-    return resumed;
-  }
-
-  const triaged = await executeTriage(context, runSpan);
-
-  return triaged;
-}
-
-async function executeTriage(context: RunContext, runSpan: Span): Promise<RunOutcome> {
+// The whole run, top to bottom: load graph, read checkpoint, branch on kind, invoke, finish
+async function runTriage(context: RunContext, request: RunRequest): Promise<RunOutcome> {
   const startedAt = Date.now();
   const { shipmentId } = context;
-  log({ event: LOG_EVENTS.RUN_STARTED, message: `Starting triage for shipment: ${shipmentId}` });
-
-  const event = buildEvent(shipmentId);
-  runSpan.setAttribute(TRACE_ATTRIBUTES.CARRIER, event.carrier ?? "");
-
   const { graph } = await getGraph();
   const config = toThreadConfig(shipmentId);
   const snapshot = await graph.getState(config);
-  const pendingRequest = findPendingApproval(snapshot);
+  const pendingApproval = findPendingApproval(snapshot);
 
-  if (pendingRequest) {
+  if (request.kind === RUN_KINDS.RESUME) {
+    log({
+      event: LOG_EVENTS.RUN_STARTED,
+      message: `Resuming triage for shipment: ${shipmentId} with decision: ${request.decision}`,
+      data: { decision: request.decision },
+    });
+    setTraceAttribute(TRACE_ATTRIBUTES.CARRIER, snapshot.values.event?.carrier ?? "");
+
+    if (!pendingApproval) {
+      log({
+        level: LOG_LEVELS.WARN,
+        event: LOG_EVENTS.NOTHING_TO_RESUME,
+        message: `Nothing to resume: ${shipmentId} is not waiting for approval.`,
+      });
+      throw new RunConflictError(`${shipmentId} is not waiting for approval.`);
+    }
+
+    const resume: ApprovalResponse = { decision: request.decision };
+    const result = await graph.invoke(new Command({ resume }), config);
+    const outcome = finishRun(context, startedAt, result);
+
+    return outcome;
+  }
+
+  log({ event: LOG_EVENTS.RUN_STARTED, message: `Starting triage for shipment: ${shipmentId}` });
+  const event = buildEvent(shipmentId);
+  setTraceAttribute(TRACE_ATTRIBUTES.CARRIER, event.carrier ?? "");
+
+  if (pendingApproval) {
     log({
       level: LOG_LEVELS.WARN,
       event: LOG_EVENTS.ALREADY_PENDING,
       message: `${shipmentId} is already waiting for approval.`,
-      data: pendingRequest,
+      data: pendingApproval,
     });
-    const pendingOutcome = toOutcome(context, startedAt, snapshot.values as TriageStateType, pendingRequest);
+    const pendingOutcome = toOutcome(context, startedAt, snapshot.values as TriageStateType, pendingApproval);
 
     return pendingOutcome;
   }
 
   const initialState = { event, triage_result: null, needs_human_approval: false, human_decision: null };
   const result = await graph.invoke(initialState, config);
-  const outcome = finishRun(context, startedAt, result);
-
-  return outcome;
-}
-
-async function executeResume(context: RunContext, decision: HumanDecision, runSpan: Span): Promise<RunOutcome> {
-  const startedAt = Date.now();
-  const { shipmentId } = context;
-  log({
-    event: LOG_EVENTS.RUN_STARTED,
-    message: `Resuming triage for shipment: ${shipmentId} with decision: ${decision}`,
-    data: { decision },
-  });
-
-  const { graph } = await getGraph();
-  const config = toThreadConfig(shipmentId);
-  const snapshot = await graph.getState(config);
-  runSpan.setAttribute(TRACE_ATTRIBUTES.CARRIER, snapshot.values.event?.carrier ?? "");
-
-  if (!findPendingApproval(snapshot)) {
-    log({
-      level: LOG_LEVELS.WARN,
-      event: LOG_EVENTS.NOTHING_TO_RESUME,
-      message: `Nothing to resume: ${shipmentId} is not waiting for approval.`,
-    });
-    throw new RunConflictError(`${shipmentId} is not waiting for approval.`);
-  }
-
-  const resume: ApprovalResponse = { decision };
-  const result = await graph.invoke(new Command({ resume }), config);
   const outcome = finishRun(context, startedAt, result);
 
   return outcome;
@@ -227,6 +202,7 @@ function logRunFailure(context: RunContext, error: unknown): void {
     event: LOG_EVENTS.RUN_FAILED,
     message: `${context.shipmentId} failed: ${message}`,
     data: { error: message },
+    context,
   });
 }
 

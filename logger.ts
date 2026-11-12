@@ -56,6 +56,7 @@ interface LogInput {
   event: LogEvent;
   message: string;
   data?: unknown;
+  context?: RunContext;
 }
 
 const runContextStorage = new AsyncLocalStorage<RunContext>();
@@ -69,7 +70,7 @@ export function withRunContext<T>(context: RunContext, fn: () => Promise<T>): Pr
 }
 
 export function log(input: LogInput): void {
-  const context = runContextStorage.getStore();
+  const context = input.context ?? runContextStorage.getStore();
   const entry: LogEntry = {
     timestamp: new Date().toISOString(),
     level: input.level ?? LOG_LEVELS.INFO,
