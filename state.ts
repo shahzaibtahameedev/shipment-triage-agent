@@ -1,6 +1,6 @@
 import { Annotation } from "@langchain/langgraph";
 import { CARRIERS, type Carrier, type HumanDecision, type TriageAction, type TriageResult } from "./constants.ts";
-import { getShipmentHistory } from "./custom-tool.ts";
+import { findShipmentForAgent } from "./stores/shipment-lookup.ts";
 
 export interface ExceptionEvent {
   shipment_id?: string;
@@ -32,24 +32,31 @@ export const TriageState = Annotation.Root({
 export type TriageStateType = typeof TriageState.State;
 
 export function buildEvent(shipmentId: string): ExceptionEvent {
-  const shipment = getShipmentHistory(shipmentId) as Record<string, unknown>;
-  if ("error" in shipment) {
+  const shipment = findShipmentForAgent(shipmentId);
+
+  if (!shipment) {
     throw new Error(`Shipment ${shipmentId} not found`);
   }
 
-  let { carrier, scans } = shipment as { carrier: string; scans: { code: string }[] } ||
-                          ({carrier: "", scans: {code: [""]}});
+  // Fixtures are read without schema validation, so the shape is checked here
+  const { carrier, scans } = shipment;
 
   if (!isCarrier(carrier)) {
     throw new Error(`Shipment ${shipmentId} has unknown carrier "${carrier}"`);
   }
 
-  return {
+  if (!Array.isArray(scans) || scans.length === 0) {
+    throw new Error(`Shipment ${shipmentId} has no scans`);
+  }
+
+  const event = {
     shipment_id: shipmentId,
-    carrier: carrier ?? "",
+    carrier,
     event_code: scans.at(-1)?.code ?? "",
     raw_payload: shipment,
   };
+
+  return event;
 }
 
 function isCarrier(value: string): value is Carrier {

@@ -1,6 +1,7 @@
 import { HUMAN_DECISIONS, type HumanDecision } from "./constants.ts";
 import { startTracing, stopTracing } from "./tracing.ts";
 import { closeGraph, resumeTriage, startTriage, RunConflictError, RUN_STATUSES, type RunOutcome } from "./triage-runner.ts";
+import { closeMcpClient } from "./mcp/client.ts";
 
 const USAGE = `Usage:
   npm run triage -- SH-1002
@@ -52,5 +53,6 @@ try {
   process.exitCode = 1;
 } finally {
   await closeGraph();
+  await closeMcpClient();
   await stopTracing();
 }

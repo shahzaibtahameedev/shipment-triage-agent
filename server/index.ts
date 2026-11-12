@@ -4,6 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { startTracing, stopTracing } from "../tracing.ts";
 import { closeGraph } from "../triage-runner.ts";
+import { closeMcpClient } from "../mcp/client.ts";
 import { handleApiError, notFound, requireLocalHost } from "./http.ts";
 import { logsRoute } from "./routes/logs.ts";
 import { promptsRoute } from "./routes/prompts.ts";
@@ -46,6 +47,7 @@ const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) =>
 async function shutdown(): Promise<void> {
   server.close();
   await closeGraph();
+  await closeMcpClient();
   await stopTracing();
   process.exit(0);
 }

@@ -28,12 +28,15 @@ export const SHIPMENT_ID_PATTERN = /^SH-\d{4,}$/;
 export const TOOL_ERRORS = {
     SHIPMENT_NOT_FOUND: "shipment_not_found",
     INVALID_DATE: "invalid_date",
+    MCP_UNAVAILABLE: "mcp_unavailable",
+    MCP_TOOL_FAILED: "mcp_tool_failed",
 } as const;
 
 export const TOOL_MESSAGES = {
     SHIPMENT_NOT_FOUND_HINT: "Check the ID. Known IDs look like 'SH-1001'.",
     INVALID_DATE_HINT: "Use ISO format YYYY-MM-DD, e.g. '2026-12-02'.",
     NORMAL_WORKING_DAY_NOTE: "Normal working day. No holiday or known delay window.",
+    MCP_UNAVAILABLE_HINT: "Tool server unreachable. Start it with: npm run mcp.",
 } as const;
 
 export const CALENDAR_KINDS = {
@@ -42,6 +45,13 @@ export const CALENDAR_KINDS = {
 } as const;
 
 export type CalendarKind = (typeof CALENDAR_KINDS)[keyof typeof CALENDAR_KINDS];
+
+export const MCP_SERVER_NAME = "shipment-tools";
+export const MCP_SERVER_VERSION = "1.0.0";
+export const MCP_PATH = "/mcp";
+export const DEFAULT_MCP_PORT = 3002;
+export const DEFAULT_MCP_HOST = "127.0.0.1";
+export const DEFAULT_MCP_URL = `http://${DEFAULT_MCP_HOST}:${DEFAULT_MCP_PORT}${MCP_PATH}`;
 
 export const ISO_DATE_LENGTH = 10;
 export const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

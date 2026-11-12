@@ -3,7 +3,7 @@ import { MemorySaver } from "@langchain/langgraph";
 import type { ApiProvider, CallApiContextParams, ProviderOptions, ProviderResponse } from "promptfoo";
 import { buildWorkflow } from "../graph.ts";
 import { buildEvent } from "../state.ts";
-import { evalHooks } from "../custom-tool.ts";
+import { evalHooks } from "../mcp-tools.ts";
 import { NODES } from "../constants.ts";
 
 export default class TriageGraphProvider implements ApiProvider {
