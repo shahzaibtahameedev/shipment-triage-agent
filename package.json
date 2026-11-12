@@ -1,7 +1,7 @@
 {
-  "name": "week2-langgraph-ts",
+  "name": "shipment-triage-agent-ts",
   "version": "1.0.0",
-  "description": "Week 2 Build 3: LangGraph.js multi-agent carrier monitoring with durable human approval",
+  "description": "Shipment triage agent",
   "scripts": {
     "triage": "tsx main.ts triage",
     "resume": "tsx main.ts resume",
