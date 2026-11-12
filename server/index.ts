@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { startTracing, stopTracing } from "../tracing.ts";
+import { prewarmSpecialistCaches, reportPrefixSizes } from "../cache-prewarm.ts";
 import { closeGraph } from "../triage-runner.ts";
 import { closeMcpClient } from "../mcp/client.ts";
 import { handleApiError, notFound, requireLocalHost } from "./http.ts";
@@ -40,6 +41,9 @@ if (existsSync(WEB_DIST_DIR)) {
 app.onError(handleApiError);
 
 startTracing();
+reportPrefixSizes();
+
+void prewarmSpecialistCaches();
 const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
   console.log(`API listening on http://${HOST}:${info.port}`);
 });

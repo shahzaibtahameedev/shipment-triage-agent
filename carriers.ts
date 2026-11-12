@@ -1,6 +1,8 @@
 import { createAgent, HumanMessage, type BaseMessage } from "langchain";
 import type { Span } from "@opentelemetry/api";
+import type { ChatOpenAI } from "@langchain/openai";
 import { model } from "./client.ts";
+import { toCacheableSystemPrompt } from "./caching.ts";
 import { createCustomsCalendarTool, createShipmentHistoryTool } from "./mcp-tools.ts";
 import { PROMPT_KEYS, PROMPT_PLACEHOLDERS, renderTemplate, type PromptKey } from "./prompt.ts";
 import { getPrompt } from "./stores/prompt-store.ts";
@@ -47,17 +49,35 @@ export async function regionalAgent(state: TriageStateType): Promise<Partial<Tri
   return stateUpdate;
 }
 
-// Built on every run so prompt edits apply without a restart
+export function createSpecialistAgent(carrier: Carrier, specialistModel: ChatOpenAI) {
+  const systemPrompt = buildSystemPrompt(carrier);
+  const cachedSystemPrompt = toCacheableSystemPrompt(systemPrompt);
+
+  const specialist = createAgent({
+    model: specialistModel,
+    systemPrompt: cachedSystemPrompt,
+    tools: buildTools(carrier),
+    responseFormat: TRIAGE_RESULT_SCHEMA,
+    middleware: [tracingMiddleware],
+  });
+
+  return specialist;
+}
+
+export function getSpecialistPrefixText(carrier: Carrier): string {
+  const toolText = buildTools(carrier)
+    .map((specialistTool) => `${specialistTool.name} ${specialistTool.description}`)
+    .join(PROMPT_SEPARATOR);
+  const prefixText = `${buildSystemPrompt(carrier)}${PROMPT_SEPARATOR}${toolText}`;
+
+  return prefixText;
+}
+
 async function runSpecialist(carrier: Carrier, state: TriageStateType): Promise<Partial<TriageStateType>> {
   const stateUpdate = await withAgentSpan(carrier, async (span) => {
-    const specialist = createAgent({
-      model,
-      systemPrompt: buildSystemPrompt(carrier),
-      tools: buildTools(carrier),
-      responseFormat: TRIAGE_RESULT_SCHEMA,
-      middleware: [tracingMiddleware],
-    });
-    const result = await specialist.invoke(toAgentMessages(state), AGENT_CONFIG);
+    const specialist = createSpecialistAgent(carrier, model);
+    const agentMessage = toAgentMessages(state);
+    const result = await specialist.invoke(agentMessage, AGENT_CONFIG);
     const specialistUpdate = toStateUpdate(carrier, result, span);
 
     return specialistUpdate;
@@ -102,7 +122,6 @@ function toAgentMessages(state: TriageStateType) {
   return agentInput;
 }
 
-// Turn the specialist's answer into the state update for this node
 function toStateUpdate(carrier: Carrier, result: IAgentResponse, span: Span): Partial<TriageStateType> {
   const triage = result.structuredResponse;
   log({

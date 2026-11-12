@@ -13,9 +13,20 @@ function requireEnv(name: string): string {
 
 export const MODEL = process.env.MODEL || "openrouter/free";
 
-export const model = new ChatOpenAI({
-  model: MODEL,
-  apiKey: requireEnv("OPENROUTER_API_KEY"),
-  temperature: 0, // triage should be repeatable, not creative
-  configuration: { baseURL: OPENROUTER_BASE_URL },
-});
+interface ModelOptions {
+  maxTokens?: number;
+}
+
+export function createModel(options: ModelOptions = {}): ChatOpenAI {
+  const chatModel = new ChatOpenAI({
+    model: MODEL,
+    apiKey: requireEnv("OPENROUTER_API_KEY"),
+    temperature: 0,
+    maxTokens: options.maxTokens,
+    configuration: { baseURL: OPENROUTER_BASE_URL },
+  });
+
+  return chatModel;
+}
+
+export const model = createModel();

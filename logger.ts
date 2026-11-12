@@ -23,6 +23,9 @@ export const LOG_EVENTS = {
   HUMAN_DECISION: "human_decision",
   RUN_COMPLETED: "run_completed",
   RUN_FAILED: "run_failed",
+  CACHE_USAGE: "cache_usage",
+  CACHE_PREFIX_SIZE: "cache_prefix_size",
+  CACHE_PREWARM: "cache_prewarm",
 } as const;
 
 export type LogEvent = (typeof LOG_EVENTS)[keyof typeof LOG_EVENTS];

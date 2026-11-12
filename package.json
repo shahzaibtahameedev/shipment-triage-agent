@@ -15,6 +15,7 @@
     "build": "npm --prefix web run build",
     "start": "tsx server/index.ts",
     "typecheck": "tsc --noEmit",
+    "cache:verify": "tsx scripts/verify-cache-control.ts",
     "evals:redteam:generate": "promptfoo redteam generate -c evals/redteam.yaml -o evals/redteam-cases.yaml --force",
     "evals:redteam:run": "promptfoo redteam eval -c evals/redteam-cases.yaml -o evals/redteam-report.yaml -j 1",
     "evals:redteam": "npm run evals:redteam:generate && npm run evals:redteam:run",

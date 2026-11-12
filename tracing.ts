@@ -13,7 +13,8 @@ import { LangfuseSpanProcessor } from "@langfuse/otel";
 import { propagateAttributes } from "@langfuse/tracing";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { createMiddleware, AIMessage, ToolMessage, type BaseMessage } from "langchain";
-import { withRunContext, type RunContext } from "./logger.ts";
+import { log, LOG_EVENTS, withRunContext, type RunContext } from "./logger.ts";
+import { getCacheUsage } from "./caching.ts";
 
 const SERVICE_NAME = "shipment-triage";
 const MIDDLEWARE_NAME = "OtelTracing";
@@ -42,6 +43,8 @@ export const TRACE_ATTRIBUTES = {
   RESPONSE_MODEL: "gen_ai.response.model",
   INPUT_TOKENS: "gen_ai.usage.input_tokens",
   OUTPUT_TOKENS: "gen_ai.usage.output_tokens",
+  CACHED_INPUT_TOKENS: "gen_ai.usage.cached_tokens",
+  CACHE_WRITE_TOKENS: "gen_ai.usage.cache_write_tokens",
   FINISH_REASONS: "gen_ai.response.finish_reasons",
   TOOL_NAME: "gen_ai.tool.name",
   TOOL_ARGUMENTS: "gen_ai.tool.call.arguments",
@@ -262,14 +265,27 @@ function toPromptMessages(systemMessage: BaseMessage | undefined, messages: Base
 
 function toResponseAttributes(response: AIMessage): Attributes {
   const finishReason = response.response_metadata?.finish_reason;
+  const cacheUsage = getCacheUsage(response);
   const attributes: Attributes = {
     [TRACE_ATTRIBUTES.RESPONSE_MODEL]: response.response_metadata?.model_name,
     [TRACE_ATTRIBUTES.INPUT_TOKENS]: response.usage_metadata?.input_tokens,
     [TRACE_ATTRIBUTES.OUTPUT_TOKENS]: response.usage_metadata?.output_tokens,
+    [TRACE_ATTRIBUTES.CACHED_INPUT_TOKENS]: cacheUsage.cachedTokens,
+    [TRACE_ATTRIBUTES.CACHE_WRITE_TOKENS]: cacheUsage.cacheWriteTokens,
     [TRACE_ATTRIBUTES.FINISH_REASONS]: finishReason ? [String(finishReason)] : undefined,
   };
 
   return attributes;
+}
+
+// Evidence trail: 0 on "openrouter/free" is expected, since free providers rarely cache
+function logCacheUsage(response: AIMessage): void {
+  const cacheUsage = getCacheUsage(response);
+  log({
+    event: LOG_EVENTS.CACHE_USAGE,
+    message: `cached_tokens=${cacheUsage.cachedTokens} cache_write_tokens=${cacheUsage.cacheWriteTokens}`,
+    data: cacheUsage,
+  });
 }
 
 export const tracingMiddleware = createMiddleware({
@@ -287,6 +303,7 @@ export const tracingMiddleware = createMiddleware({
       const response = await handler(request);
       setContent(span, TRACE_ATTRIBUTES.OBSERVATION_OUTPUT, toChatMessage(response));
       span.setAttributes(toResponseAttributes(response));
+      logCacheUsage(response);
 
       return response;
     });
