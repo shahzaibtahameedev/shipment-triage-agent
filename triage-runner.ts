@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Command, INTERRUPT, isInterrupted, type StateSnapshot } from "@langchain/langgraph";
 import { buildGraph } from "./graph.ts";
-import { buildEvent, type CarrierFinding, type TriageStateType } from "./state.ts";
+import { buildEvent, type CarrierFinding, type ClassifierDecision, type TriageStateType } from "./state.ts";
 import type { ApprovalRequest, ApprovalResponse } from "./approval.ts";
 import type { HumanDecision, TriageResult } from "./constants.ts";
 import { log, LOG_EVENTS, LOG_LEVELS, RUN_KINDS, type RunContext } from "./logger.ts";
@@ -26,6 +26,7 @@ export interface RunOutcome {
   shipmentId: string;
   status: RunStatus;
   carrier: string;
+  classifier: ClassifierDecision | null;
   finalState: FinalState;
   approvalRequest: ApprovalRequest | null;
   durationMs: number;
@@ -165,7 +166,13 @@ async function runTriage(context: RunContext, request: RunRequest): Promise<RunO
     return pendingOutcome;
   }
 
-  const initialState = { event, triage_result: null, needs_human_approval: false, human_decision: null };
+  const initialState = {
+    event,
+    classifier_decision: null,
+    triage_result: null,
+    needs_human_approval: false,
+    human_decision: null,
+  };
   const result = await graph.invoke(initialState, config);
   const outcome = finishRun(context, startedAt, result);
 
@@ -213,11 +220,19 @@ function toOutcome(
   approvalRequest: ApprovalRequest | null,
 ): RunOutcome {
   const status = approvalRequest ? RUN_STATUSES.AWAITING_APPROVAL : RUN_STATUSES.COMPLETED;
+  const classifier = values.classifier_decision ?? null;
+
+  if (classifier) {
+    setTraceAttribute(TRACE_ATTRIBUTES.CLASSIFIER_ROUTE, classifier.route);
+    setTraceAttribute(TRACE_ATTRIBUTES.CLASSIFIER_MODEL, classifier.model);
+  }
+
   const outcome: RunOutcome = {
     runId: context.runId,
     shipmentId: context.shipmentId,
     status,
     carrier: values.event?.carrier ?? "",
+    classifier,
     finalState: toFinalState(values),
     approvalRequest,
     durationMs: Date.now() - startedAt,

@@ -64,8 +64,22 @@ export const CARRIERS = {
 
 export type Carrier = (typeof CARRIERS)[keyof typeof CARRIERS];
 
+export const EVENT_CODES = {
+    CUSTOMS_HOLD: "HE",
+    EXCEPTION_DELAY: "XL",
+} as const;
+
+export const CLASSIFIER_ROUTES = {
+    DETERMINISTIC: "deterministic",
+    SMALL: "small",
+    STRONG: "strong",
+} as const;
+
+export type ClassifierRoute = (typeof CLASSIFIER_ROUTES)[keyof typeof CLASSIFIER_ROUTES];
+
 //Node names in the graph
 export const NODES = {
+    CLASSIFY: "classify",
     ROUTE: "route",
     DHL: "dhl",
     MAERSK: "maersk",

@@ -1,5 +1,12 @@
 import { Annotation } from "@langchain/langgraph";
-import { CARRIERS, type Carrier, type HumanDecision, type TriageAction, type TriageResult } from "./constants.ts";
+import {
+  CARRIERS,
+  type Carrier,
+  type ClassifierRoute,
+  type HumanDecision,
+  type TriageAction,
+  type TriageResult,
+} from "./constants.ts";
 import { findShipmentForAgent } from "./stores/shipment-lookup.ts";
 
 export interface ExceptionEvent {
@@ -15,9 +22,17 @@ export interface CarrierFinding {
   confidence: number;
 }
 
+export interface ClassifierDecision {
+  route: ClassifierRoute;
+  model: string;
+  reason: string;
+  fallback_used: boolean;
+}
+
 export const TriageState = Annotation.Root({
   // Latest node value
   event: Annotation<ExceptionEvent>(),
+  classifier_decision: Annotation<ClassifierDecision | null>(),
   triage_result: Annotation<TriageResult | null>(),
   needs_human_approval: Annotation<boolean>(),
   human_decision: Annotation<HumanDecision | null>(),

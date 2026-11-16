@@ -26,6 +26,8 @@ export const EVENT_LABELS: Record<LogEvent, string> = {
   [LOG_EVENTS.RUN_STARTED]: 'Run started',
   [LOG_EVENTS.ALREADY_PENDING]: 'Already waiting',
   [LOG_EVENTS.NOTHING_TO_RESUME]: 'Nothing to resume',
+  [LOG_EVENTS.CLASSIFIER_DECISION]: 'Classified',
+  [LOG_EVENTS.CLASSIFIER_FALLBACK]: 'Backup model used',
   [LOG_EVENTS.ROUTE_SELECTED]: 'Routed',
   [LOG_EVENTS.TOOL_CALL]: 'Tool call',
   [LOG_EVENTS.SPECIALIST_RESULT]: 'Specialist answered',

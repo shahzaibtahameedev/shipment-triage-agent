@@ -16,6 +16,8 @@ export const LOG_EVENTS = {
   RUN_STARTED: "run_started",
   ALREADY_PENDING: "already_pending",
   NOTHING_TO_RESUME: "nothing_to_resume",
+  CLASSIFIER_DECISION: "classifier_decision",
+  CLASSIFIER_FALLBACK: "classifier_fallback",
   ROUTE_SELECTED: "route_selected",
   TOOL_CALL: "tool_call",
   SPECIALIST_RESULT: "specialist_result",

@@ -1,7 +1,7 @@
 import { createAgent, HumanMessage, type BaseMessage } from "langchain";
 import type { Span } from "@opentelemetry/api";
 import type { ChatOpenAI } from "@langchain/openai";
-import { model } from "./client.ts";
+import { createModel, model } from "./client.ts";
 import { toCacheableSystemPrompt } from "./caching.ts";
 import { createCustomsCalendarTool, createShipmentHistoryTool } from "./mcp-tools.ts";
 import { PROMPT_KEYS, PROMPT_PLACEHOLDERS, renderTemplate, type PromptKey } from "./prompt.ts";
@@ -73,9 +73,21 @@ export function getSpecialistPrefixText(carrier: Carrier): string {
   return prefixText;
 }
 
+function resolveSpecialistModel(state: TriageStateType): ChatOpenAI {
+  const chosenModel = state.classifier_decision?.model;
+
+  if (!chosenModel) {
+    return model;
+  }
+
+  const specialistModel = createModel({ model: chosenModel });
+
+  return specialistModel;
+}
+
 async function runSpecialist(carrier: Carrier, state: TriageStateType): Promise<Partial<TriageStateType>> {
   const stateUpdate = await withAgentSpan(carrier, async (span) => {
-    const specialist = createSpecialistAgent(carrier, model);
+    const specialist = createSpecialistAgent(carrier, resolveSpecialistModel(state));
     const agentMessage = toAgentMessages(state);
     const result = await specialist.invoke(agentMessage, AGENT_CONFIG);
     const specialistUpdate = toStateUpdate(carrier, result, span);

@@ -11,18 +11,27 @@ function requireEnv(name: string): string {
   return value;
 }
 
-export const MODEL = process.env.MODEL || "openrouter/free";
+const DEFAULT_MODEL = "openrouter/free";
+
+export const MODEL = process.env.MODEL || DEFAULT_MODEL;
+
+export const MODEL_SMALL = process.env.MODEL_SMALL || MODEL;
+export const MODEL_STRONG = process.env.MODEL_STRONG || MODEL;
+export const MODEL_BACKUP = process.env.MODEL_BACKUP || MODEL;
 
 interface ModelOptions {
+  model?: string;
   maxTokens?: number;
+  timeout?: number;
 }
 
 export function createModel(options: ModelOptions = {}): ChatOpenAI {
   const chatModel = new ChatOpenAI({
-    model: MODEL,
+    model: options.model || MODEL,
     apiKey: requireEnv("OPENROUTER_API_KEY"),
     temperature: 0,
     maxTokens: options.maxTokens,
+    timeout: options.timeout,
     configuration: { baseURL: OPENROUTER_BASE_URL },
   });
 

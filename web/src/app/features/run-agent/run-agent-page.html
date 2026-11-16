@@ -114,6 +114,7 @@
         (execute)="execute()"
       />
       <app-line-diagram class="-mt-2 w-full" [carrier]="carrier()" [phase]="journeyPhase()" [approval]="approvalState()" />
+      <app-classifier-panel class="mt-4 w-full" [decision]="classifierDecision()" />
     </section>
 
     <app-result-panel

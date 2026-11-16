@@ -197,5 +197,355 @@
       ],
       "notes": "Driver rest break with a new ETA before the promised delivery. Also the red-team base shipment."
     }
+  },
+  "SH-2005": {
+    "shipment": {
+      "shipment_id": "SH-2005",
+      "carrier": "dhl",
+      "mode": "air",
+      "origin": "Karachi, PK",
+      "destination": "Munich, DE",
+      "destination_country_code": "DE",
+      "customer": "Bayern Werkzeug GmbH",
+      "cargo": "Machine tool spares, 9 cartons",
+      "promised_delivery": "2026-12-29",
+      "temperature_controlled": false,
+      "exception_raised_at": "2026-12-24T09:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Airport, PK",
+          "timestamp": "2026-12-22T04:20:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "AR",
+          "location": "Munich Airport, DE",
+          "timestamp": "2026-12-23T18:05:00Z",
+          "note": "Arrived at destination hub"
+        },
+        {
+          "code": "HE",
+          "location": "Munich Customs, DE",
+          "timestamp": "2026-12-24T08:30:00Z",
+          "note": "Held at customs, awaiting clearance"
+        }
+      ],
+      "past_customs_history": "Same shipper and consignee cleared German customs without issues on 5 previous shipments in 2026."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "no_action"
+      ],
+      "notes": "Customs hold on the German Christmas holiday. Classifier route 1 (deterministic) decides this in code from the customs calendar, with no model call."
+    }
+  },
+  "SH-2006": {
+    "shipment": {
+      "shipment_id": "SH-2006",
+      "carrier": "dhl",
+      "mode": "air",
+      "origin": "Lahore, PK",
+      "destination": "London Heathrow, GB",
+      "destination_country_code": "GB",
+      "customer": "Camden Audio Ltd",
+      "cargo": "Studio monitors, 6 cartons",
+      "promised_delivery": "2026-12-30",
+      "temperature_controlled": false,
+      "exception_raised_at": "2026-12-26T10:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Lahore, PK",
+          "timestamp": "2026-12-24T03:00:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "AR",
+          "location": "London Heathrow, GB",
+          "timestamp": "2026-12-25T11:40:00Z",
+          "note": "Arrived at destination hub"
+        },
+        {
+          "code": "HE",
+          "location": "Heathrow Customs, GB",
+          "timestamp": "2026-12-26T09:15:00Z",
+          "note": "Held at customs, entry queued for review"
+        }
+      ],
+      "past_customs_history": "Second shipment to this consignee, the first cleared without issues."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "no_action"
+      ],
+      "notes": "Customs hold inside the UK Christmas and Boxing Day holiday. Classifier route 1 (deterministic) decides this in code, with no model call."
+    }
+  },
+  "SH-2007": {
+    "shipment": {
+      "shipment_id": "SH-2007",
+      "carrier": "maersk",
+      "mode": "ocean",
+      "origin": "Karachi, PK",
+      "destination": "Shanghai, CN",
+      "destination_country_code": "CN",
+      "customer": "Huadong Textile Trading Co",
+      "cargo": "Cotton yarn, 2 x 40ft containers",
+      "promised_delivery": "2027-02-20",
+      "temperature_controlled": false,
+      "exception_raised_at": "2027-02-08T06:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Port, PK",
+          "timestamp": "2027-01-10T08:00:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "DP",
+          "location": "Karachi Port, PK",
+          "timestamp": "2027-01-11T13:00:00Z",
+          "note": "Vessel departed"
+        },
+        {
+          "code": "AR",
+          "location": "Shanghai Port, CN",
+          "timestamp": "2027-02-07T22:10:00Z",
+          "note": "Vessel arrived, discharged"
+        },
+        {
+          "code": "HE",
+          "location": "Shanghai Customs, CN",
+          "timestamp": "2027-02-08T03:45:00Z",
+          "note": "Held at customs, declaration queued"
+        }
+      ],
+      "past_customs_history": "Same shipper and consignee cleared Shanghai customs without issues on 3 previous shipments in 2026."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "notify_customer"
+      ],
+      "notes": "Customs hold inside the Chinese Lunar New Year delay window. Classifier route 1 (deterministic) decides this in code; a known delay window warrants telling the customer rather than doing nothing."
+    }
+  },
+  "SH-2008": {
+    "shipment": {
+      "shipment_id": "SH-2008",
+      "carrier": "maersk",
+      "mode": "ocean",
+      "origin": "Karachi, PK",
+      "destination": "Jeddah, SA",
+      "destination_country_code": "SA",
+      "customer": "Hijaz Building Supplies",
+      "cargo": "Ceramic tiles, 1 x 40ft container",
+      "promised_delivery": "2026-09-30",
+      "temperature_controlled": false,
+      "exception_raised_at": "2026-09-23T08:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Port, PK",
+          "timestamp": "2026-09-05T07:30:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "DP",
+          "location": "Karachi Port, PK",
+          "timestamp": "2026-09-06T16:00:00Z",
+          "note": "Vessel departed"
+        },
+        {
+          "code": "AR",
+          "location": "Jeddah Islamic Port, SA",
+          "timestamp": "2026-09-22T19:20:00Z",
+          "note": "Vessel arrived, discharged"
+        },
+        {
+          "code": "HE",
+          "location": "Jeddah Customs, SA",
+          "timestamp": "2026-09-23T06:10:00Z",
+          "note": "Held at customs, no officer assigned"
+        }
+      ],
+      "past_customs_history": "First shipment to this consignee."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "no_action"
+      ],
+      "notes": "Customs hold on Saudi National Day, added to the customs calendar for this case. Classifier route 1 (deterministic) decides this in code, with no model call."
+    }
+  },
+  "SH-2009": {
+    "shipment": {
+      "shipment_id": "SH-2009",
+      "carrier": "regional_ground",
+      "mode": "ground",
+      "origin": "Lahore, PK",
+      "destination": "Multan, PK",
+      "destination_country_code": "PK",
+      "customer": "Nishtar Food Distributors",
+      "cargo": "Packaged food, 1 truck",
+      "promised_delivery": "2026-11-18T20:00:00Z",
+      "temperature_controlled": false,
+      "scan_sla_hours": 12,
+      "exception_raised_at": "2026-11-18T13:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Lahore Depot, PK",
+          "timestamp": "2026-11-18T07:00:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "XL",
+          "location": "Sahiwal, PK",
+          "timestamp": "2026-11-18T12:40:00Z",
+          "note": "Running late - driver on mandatory rest break, new ETA 2026-11-18T16:45:00Z"
+        }
+      ],
+      "past_customs_history": "Domestic shipment, no customs."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "no_action"
+      ],
+      "notes": "Rest break with a revised ETA still inside the promised delivery. The XL note states a date and a time, so classifier route 2 sends this to MODEL_SMALL."
+    }
+  },
+  "SH-2010": {
+    "shipment": {
+      "shipment_id": "SH-2010",
+      "carrier": "maersk",
+      "mode": "ocean",
+      "origin": "Karachi, PK",
+      "destination": "Southampton, GB",
+      "destination_country_code": "GB",
+      "customer": "Solent Floorings Ltd",
+      "cargo": "Rubber matting, 2 x 40ft containers",
+      "promised_delivery": "2026-11-26",
+      "temperature_controlled": false,
+      "exception_raised_at": "2026-11-22T06:30:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Port, PK",
+          "timestamp": "2026-10-28T09:00:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "DP",
+          "location": "Karachi Port, PK",
+          "timestamp": "2026-10-29T15:30:00Z",
+          "note": "Vessel departed"
+        },
+        {
+          "code": "XL",
+          "location": "Southampton anchorage, GB",
+          "timestamp": "2026-11-22T05:50:00Z",
+          "note": "Vessel waiting for a berth, port congestion. Terminal allocated berthing window 2026-11-24 08:00."
+        }
+      ],
+      "past_customs_history": "Same shipper and consignee cleared UK customs without issues on 2 previous shipments in 2026."
+    },
+    "expected": {
+      "false_positive": true,
+      "actions": [
+        "no_action",
+        "notify_customer"
+      ],
+      "notes": "Berthing window still lands before the promised delivery. The XL note states a date and a time, so classifier route 2 sends this to MODEL_SMALL."
+    }
+  },
+  "SH-2011": {
+    "shipment": {
+      "shipment_id": "SH-2011",
+      "carrier": "regional_ground",
+      "mode": "ground",
+      "origin": "Karachi, PK",
+      "destination": "Quetta, PK",
+      "destination_country_code": "PK",
+      "customer": "Bolan Irrigation Works",
+      "cargo": "Industrial pumps, 1 pallet",
+      "promised_delivery": "2026-11-21",
+      "temperature_controlled": false,
+      "scan_sla_hours": 24,
+      "exception_raised_at": "2026-11-20T03:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Karachi Depot, PK",
+          "timestamp": "2026-11-19T06:30:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "XL",
+          "location": "National highway, PK",
+          "timestamp": "2026-11-20T02:15:00Z",
+          "note": "Vehicle held at a road closure. No revised estimate from the driver yet."
+        }
+      ],
+      "past_customs_history": "Domestic shipment, no customs."
+    },
+    "expected": {
+      "false_positive": null,
+      "actions": [
+        "notify_customer",
+        "escalate_carrier",
+        "needs_human_review"
+      ],
+      "notes": "Road closure with no revised estimate against a next-day promise, so the outcome is genuinely open. The XL note states no date and no time, so classifier route 2 sends this to MODEL_STRONG."
+    }
+  },
+  "SH-2012": {
+    "shipment": {
+      "shipment_id": "SH-2012",
+      "carrier": "dhl",
+      "mode": "air",
+      "origin": "Lahore, PK",
+      "destination": "Toronto, CA",
+      "destination_country_code": "CA",
+      "customer": "Maple Apparel Imports Inc",
+      "cargo": "Textile samples, 4 cartons",
+      "promised_delivery": "2026-11-24",
+      "temperature_controlled": false,
+      "exception_raised_at": "2026-11-21T15:00:00Z",
+      "scans": [
+        {
+          "code": "PU",
+          "location": "Lahore, PK",
+          "timestamp": "2026-11-20T05:10:00Z",
+          "note": "Picked up from shipper"
+        },
+        {
+          "code": "AR",
+          "location": "Doha Transit, QA",
+          "timestamp": "2026-11-21T02:30:00Z",
+          "note": "Transit hub arrival"
+        },
+        {
+          "code": "XL",
+          "location": "Doha Transit, QA",
+          "timestamp": "2026-11-21T14:00:00Z",
+          "note": "Cargo offloaded because the connecting flight was oversold. Awaiting rebooking on the next available service."
+        }
+      ],
+      "past_customs_history": "Regular customer, no prior issues."
+    },
+    "expected": {
+      "false_positive": false,
+      "actions": [
+        "notify_customer",
+        "escalate_carrier"
+      ],
+      "notes": "Offloaded cargo with no rebooking confirmed and a short air transit left. The XL note states no date and no time, so classifier route 2 sends this to MODEL_STRONG."
+    }
   }
 }

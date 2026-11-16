@@ -30,6 +30,14 @@ export const RUN_STATUSES = {
 
 export type RunStatus = (typeof RUN_STATUSES)[keyof typeof RUN_STATUSES];
 
+export const CLASSIFIER_ROUTES = {
+  DETERMINISTIC: 'deterministic',
+  SMALL: 'small',
+  STRONG: 'strong',
+} as const;
+
+export type ClassifierRoute = (typeof CLASSIFIER_ROUTES)[keyof typeof CLASSIFIER_ROUTES];
+
 export const LOG_LEVELS = {
   INFO: 'info',
   WARN: 'warn',
@@ -42,6 +50,8 @@ export const LOG_EVENTS = {
   RUN_STARTED: 'run_started',
   ALREADY_PENDING: 'already_pending',
   NOTHING_TO_RESUME: 'nothing_to_resume',
+  CLASSIFIER_DECISION: 'classifier_decision',
+  CLASSIFIER_FALLBACK: 'classifier_fallback',
   ROUTE_SELECTED: 'route_selected',
   TOOL_CALL: 'tool_call',
   SPECIALIST_RESULT: 'specialist_result',
@@ -112,11 +122,19 @@ export interface FinalState {
   carrier_findings: CarrierFinding[];
 }
 
+export interface ClassifierDecision {
+  route: ClassifierRoute;
+  model: string;
+  reason: string;
+  fallback_used: boolean;
+}
+
 export interface RunOutcome {
   runId: string;
   shipmentId: string;
   status: RunStatus;
   carrier: string;
+  classifier: ClassifierDecision | null;
   finalState: FinalState;
   approvalRequest: { triage_result: TriageResult } | null;
   durationMs: number;
@@ -167,6 +185,12 @@ export const ACTION_LABELS: Record<TriageAction, string> = {
   [TRIAGE_ACTIONS.ESCALATE_CARRIER]: 'Escalate to carrier',
   [TRIAGE_ACTIONS.RECOMMEND_REROUTE]: 'Recommend reroute',
   [TRIAGE_ACTIONS.NEEDS_HUMAN_REVIEW]: 'Needs human review',
+};
+
+export const CLASSIFIER_ROUTE_LABELS: Record<ClassifierRoute, string> = {
+  [CLASSIFIER_ROUTES.DETERMINISTIC]: 'Decided in code',
+  [CLASSIFIER_ROUTES.SMALL]: 'Small model',
+  [CLASSIFIER_ROUTES.STRONG]: 'Strong model',
 };
 
 export const ALL_CARRIERS = Object.values(CARRIERS);

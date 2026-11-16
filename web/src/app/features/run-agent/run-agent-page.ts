@@ -17,6 +17,7 @@ import { CarrierLine } from '../../shared/carrier-line';
 import { ExecuteButton } from '../../shared/execute-button';
 import { JsonTree } from '../../shared/json-tree/json-tree';
 import { APPROVAL_STATES, JOURNEY_PHASES, LineDiagram, type ApprovalState, type JourneyPhase } from '../../shared/line-diagram';
+import { ClassifierPanel } from './classifier-panel';
 import { ResultPanel } from './result-panel';
 
 const SOURCES = {
@@ -43,7 +44,7 @@ interface SelectedShipment {
 @Component({
   selector: 'app-run-agent-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, CarrierLine, ExecuteButton, JsonTree, LineDiagram, ResultPanel],
+  imports: [RouterLink, CarrierLine, ClassifierPanel, ExecuteButton, JsonTree, LineDiagram, ResultPanel],
   templateUrl: './run-agent-page.html',
 })
 export class RunAgentPage {
@@ -133,6 +134,12 @@ export class RunAgentPage {
     const view = selection ? this.runStore.viewFor(selection.id) : null;
 
     return view;
+  });
+
+  protected readonly classifierDecision = computed(() => {
+    const decision = this.runView()?.outcome?.classifier ?? null;
+
+    return decision;
   });
 
   protected readonly isRunning = computed(() => {
