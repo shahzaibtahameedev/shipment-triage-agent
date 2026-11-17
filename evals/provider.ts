@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { MemorySaver } from "@langchain/langgraph";
 import type { ApiProvider, CallApiContextParams, ProviderOptions, ProviderResponse } from "promptfoo";
-import { buildWorkflow } from "../graph.ts";
-import { buildEvent } from "../state.ts";
-import { evalHooks } from "../mcp-tools.ts";
-import { NODES } from "../constants.ts";
+import { buildWorkflow } from "../app/graph/graph.ts";
+import { buildEvent } from "../app/graph/state.ts";
+import { evalHooks } from "../app/tools/mcp-tools.ts";
+import { NODES } from "../app/constants.ts";
 
 export default class TriageGraphProvider implements ApiProvider {
   config: { base_shipment?: string };

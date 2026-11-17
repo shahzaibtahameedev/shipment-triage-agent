@@ -1,6 +1,8 @@
-# Postgres for the LangGraph checkpointer.
-# Start:  docker compose up -d      Stop:  docker compose down
-# Data lives in the named volume, so checkpoints survive container restarts.
+# Postgres for the LangGraph checkpointer, plus the API and the MCP tool server.
+# Start:  docker compose up -d --build      Stop:  docker compose down
+# See infra/RUNBOOK.md. The Angular UI stays outside Docker (npm run web).
+# Checkpoints, fixtures and logs live in named volumes, so they survive
+# container restarts and nothing the app writes lives only in the container.
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,9 +11,69 @@ services:
       POSTGRES_PASSWORD: agent
       POSTGRES_DB: agentdb
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agentdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Owns the network namespace that `app` joins, so the agent reaches the tool
+  # server on 127.0.0.1 - which its localhost Host-header guard requires.
+  # The API port is published here because this service owns the namespace;
+  # that way `docker compose kill app` leaves the namespace intact and the
+  # restarted app rejoins it. MCP's own port 3002 is never published.
+  mcp:
+    build: .
+    command: ["node", "--import", "tsx", "app/mcp-server/index.ts"]
+    env_file: .env
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - fixtures:/usr/src/app/fixtures
+      - logs:/usr/src/app/logs
+    read_only: true
+    tmpfs:
+      # tsx writes its compile cache to the OS temp dir.
+      - /tmp
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  app:
+    build: .
+    network_mode: "service:mcp"
+    env_file: .env
+    # environment wins over env_file, which is what overrides the loopback
+    # API_HOST and the localhost DATABASE_URL that .env sets for host runs.
+    environment:
+      API_HOST: 0.0.0.0
+      DATABASE_URL: postgresql://agent:agent@postgres:5432/agentdb
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mcp:
+        condition: service_started
+    volumes:
+      - fixtures:/usr/src/app/fixtures
+      - logs:/usr/src/app/logs
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1536M
 
 volumes:
   pgdata:
+  fixtures:
+  logs:

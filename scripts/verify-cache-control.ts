@@ -5,9 +5,9 @@
 import "dotenv/config";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage } from "langchain";
-import { CARRIERS } from "../constants.ts";
-import { createSpecialistAgent } from "../carriers.ts";
-import { MODEL } from "../client.ts";
+import { CARRIERS } from "../app/constants.ts";
+import { createSpecialistAgent } from "../app/graph/carriers.ts";
+import { MODEL } from "../app/client.ts";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const VERIFY_MAX_TOKENS = 16;

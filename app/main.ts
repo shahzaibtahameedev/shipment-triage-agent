@@ -1,0 +1,60 @@
+import { existsSync } from "node:fs";
+import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { Hono } from "hono";
+import { startTracing, stopTracing } from "../observability/tracing.ts";
+import { prewarmSpecialistCaches, reportPrefixSizes } from "./cache-prewarm.ts";
+import { closeGraph } from "./graph/triage-runner.ts";
+import { closeMcpClient } from "./tools/mcp-client.ts";
+import { handleApiError, notFound, requireLocalHost } from "./api/http.ts";
+import { logsRoute } from "./api/routes/logs.ts";
+import { promptsRoute } from "./api/routes/prompts.ts";
+import { runsRoute } from "./api/routes/runs.ts";
+import { shipmentsRoute } from "./api/routes/shipments.ts";
+import { testShipmentsRoute } from "./api/routes/test-shipments.ts";
+
+const DEFAULT_PORT = 3001;
+const PORT = Number(process.env.API_PORT ?? DEFAULT_PORT);
+
+const DEFAULT_HOST = "127.0.0.1";
+const HOST = process.env.API_HOST ?? DEFAULT_HOST;
+const WEB_DIST_DIR = "web/dist/web/browser";
+const SPA_INDEX_FILE = `${WEB_DIST_DIR}/index.html`;
+
+const app = new Hono();
+
+app.use("/api/*", requireLocalHost);
+app.route("/api/shipments", shipmentsRoute);
+app.route("/api/test-shipments", testShipmentsRoute);
+app.route("/api/runs", runsRoute);
+app.route("/api/logs", logsRoute);
+app.route("/api/prompts", promptsRoute);
+app.all("/api/*", (c) => {
+  throw notFound(`No API route for ${c.req.method} ${c.req.path}`);
+});
+
+if (existsSync(WEB_DIST_DIR)) {
+  app.use("*", serveStatic({ root: WEB_DIST_DIR }));
+  app.get("*", serveStatic({ path: SPA_INDEX_FILE }));
+}
+
+app.onError(handleApiError);
+
+startTracing();
+reportPrefixSizes();
+
+void prewarmSpecialistCaches();
+const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
+  console.log(`API listening on http://${HOST}:${info.port}`);
+});
+
+async function shutdown(): Promise<void> {
+  server.close();
+  await closeGraph();
+  await closeMcpClient();
+  await stopTracing();
+  process.exit(0);
+}
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
