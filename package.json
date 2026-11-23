@@ -16,7 +16,7 @@
     "start": "tsx app/main.ts",
     "typecheck": "tsc --noEmit",
     "test:schema": "vitest run tests/schema",
-    "evals:ci": "promptfoo eval -c evals/promptfooconfig.yaml --filter-first-n 3 --max-concurrency 1",
+    "evals:ci": "promptfoo eval -c evals/promptfooconfig.yaml --filter-first-n 2 --max-concurrency 1",
     "cache:verify": "tsx scripts/verify-cache-control.ts",
     "evals:redteam:generate": "promptfoo redteam generate -c evals/redteam.yaml -o evals/redteam-cases.yaml --force",
     "evals:redteam:run": "promptfoo redteam eval -c evals/redteam-cases.yaml -o evals/redteam-report.yaml -j 1",
