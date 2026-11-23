@@ -60,6 +60,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Node 22 ships npm 10, which rejects this lockfile (written by npm 11).
+      # Use the same npm as the Dockerfile and local machine.
+      - run: npm install -g npm@11.9.0
+
       - run: npm ci
 
       # The agent's tools live in a separate MCP server on port 3002.
